@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-
-const STORAGE_KEY = 'flightpath_app_state_v2'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 const SEED_DATA = {
   projects: [
@@ -86,7 +85,7 @@ const SEED_DATA = {
       id: 'upd-001',
       projectId: 'proj-001',
       channel: 'email',
-      rawText: "Hi team, quick update - we finished provisioning all 12 drones for Skyline yesterday. Software integration testing kicked off this morning, Alex is running the telemetry sync config today and Priya will start the integration test suite tomorrow. We're on track for the Aug 25 milestone but flagging that we saw some packet drops during load testing, logged as a bug.",
+      rawText: "Hi team, quick update - we finished provisioning all 12 drones for Skyline yesterday. Software integration testing kicked off this morning, Alex is running the telemetry sync config today and Priya will start the integration test suite tomorrow.",
       timestamp: '2026-08-10T14:32:00Z',
       parsed: {
         summary: 'Finished provisioning all 12 drones. Software integration testing under way.',
@@ -98,7 +97,7 @@ const SEED_DATA = {
       id: 'upd-002',
       projectId: 'proj-002',
       channel: 'chat',
-      rawText: "hey so meridian's regulatory approval is stuck again, the airspace clearance app got kicked back for missing zone C documentation. rahul is following up with legal but this is blocking both the site survey and approval milestones. no new movement expected before next week at earliest",
+      rawText: "hey so meridian's regulatory approval is stuck again, the airspace clearance app got kicked back for missing zone C documentation. rahul is following up with legal but this is blocking both the site survey and approval milestones.",
       timestamp: '2026-07-02T09:15:00Z',
       parsed: {
         summary: 'Regulatory approval blocked by missing Zone C documentation.',
@@ -110,7 +109,7 @@ const SEED_DATA = {
       id: 'upd-003',
       projectId: 'proj-003',
       channel: 'call',
-      rawText: "Call notes 8/13 - Coastal Ports check-in. Zone A sensor install complete and looking good. Zone B install in progress, Sofia expects to wrap by end of week pending a firmware update on the new hardware batch. Customer asked about dashboard alert thresholds, told them we'll configure those once Zone B is done. Overall still tracking to the Sept 1 dashboard config milestone.",
+      rawText: "Call notes 8/13 - Coastal Ports check-in. Zone A sensor install complete and looking good. Zone B install in progress, Sofia expects to wrap by end of week.",
       timestamp: '2026-08-13T16:00:00Z',
       parsed: {
         summary: 'Zone A sensor installation complete. Zone B installation in progress.',
@@ -121,34 +120,175 @@ const SEED_DATA = {
   ],
 }
 
+// Helpers for Database Column Mapping
+function fromDbProject(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    customer: p.customer,
+    owners: p.owners || [],
+    description: p.description || '',
+    status: p.status || 'On Track',
+    progress: p.progress !== undefined ? p.progress : 0,
+    createdAt: p.created_at,
+    startDate: p.start_date,
+    dueDate: p.due_date,
+    lastActivityAt: p.last_activity_at,
+  }
+}
+
+function toDbProject(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    customer: p.customer,
+    owners: p.owners,
+    description: p.description,
+    status: p.status,
+    progress: p.progress,
+    created_at: p.createdAt,
+    start_date: p.startDate,
+    due_date: p.dueDate,
+    last_activity_at: p.lastActivityAt,
+  }
+}
+
+function fromDbMilestone(m) {
+  return {
+    id: m.id,
+    projectId: m.project_id,
+    name: m.name,
+    status: m.status,
+    dueDate: m.due_date,
+  }
+}
+
+function toDbMilestone(m) {
+  return {
+    id: m.id,
+    project_id: m.projectId,
+    name: m.name,
+    status: m.status,
+    due_date: m.dueDate,
+  }
+}
+
+function fromDbTask(t) {
+  return {
+    id: t.id,
+    milestoneId: t.milestone_id,
+    name: t.name,
+    status: t.status,
+    owner: t.owner,
+  }
+}
+
+function toDbTask(t) {
+  return {
+    id: t.id,
+    milestone_id: t.milestoneId,
+    name: t.name,
+    status: t.status,
+    owner: t.owner,
+  }
+}
+
+function fromDbIssue(i) {
+  return {
+    id: i.id,
+    projectId: i.project_id,
+    title: i.title,
+    category: i.category,
+    status: i.status,
+  }
+}
+
+function toDbIssue(i) {
+  return {
+    id: i.id,
+    project_id: i.projectId,
+    title: i.title,
+    category: i.category,
+    status: i.status,
+  }
+}
+
+function fromDbUpdate(u) {
+  return {
+    id: u.id,
+    projectId: u.project_id,
+    channel: u.channel,
+    rawText: u.raw_text,
+    timestamp: u.timestamp,
+    parsed: u.parsed,
+  }
+}
+
+function toDbUpdate(u) {
+  return {
+    id: u.id,
+    project_id: u.projectId,
+    channel: u.channel,
+    raw_text: u.rawText,
+    timestamp: u.timestamp,
+    parsed: u.parsed,
+  }
+}
+
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const [data, setData] = useState(() => {
+  const [data, setData] = useState(SEED_DATA)
+  const [loading, setLoading] = useState(true)
+
+  // Fetch initial state from Supabase PostgreSQL
+  const fetchFromSupabase = useCallback(async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      setLoading(false)
+      return
+    }
+
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
-          return parsed
-        }
+      const [pRes, mRes, tRes, iRes, uRes] = await Promise.all([
+        supabase.from('projects').select('*'),
+        supabase.from('milestones').select('*'),
+        supabase.from('tasks').select('*'),
+        supabase.from('issues').select('*'),
+        supabase.from('updates').select('*'),
+      ])
+
+      if (pRes.data && pRes.data.length > 0) {
+        setData({
+          projects: pRes.data.map(fromDbProject),
+          milestones: (mRes.data || []).map(fromDbMilestone),
+          tasks: (tRes.data || []).map(fromDbTask),
+          issues: (iRes.data || []).map(fromDbIssue),
+          rawUpdates: (uRes.data || []).map(fromDbUpdate),
+        })
+      } else {
+        // First run on Supabase: Seed PostgreSQL tables with 3 seed projects
+        console.log('Seeding Supabase PostgreSQL tables with 3 seed projects...')
+        await Promise.all([
+          supabase.from('projects').insert(SEED_DATA.projects.map(toDbProject)),
+          supabase.from('milestones').insert(SEED_DATA.milestones.map(toDbMilestone)),
+          supabase.from('tasks').insert(SEED_DATA.tasks.map(toDbTask)),
+          supabase.from('issues').insert(SEED_DATA.issues.map(toDbIssue)),
+          supabase.from('updates').insert(SEED_DATA.rawUpdates.map(toDbUpdate)),
+        ])
       }
     } catch (err) {
-      console.warn('Could not read flightpath_app_state_v2 from localStorage:', err)
+      console.warn('Supabase fetch error, using in-memory state:', err)
+    } finally {
+      setLoading(false)
     }
-    return SEED_DATA
-  })
+  }, [])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (err) {
-      console.error('Could not save flightpath_app_state_v2 to localStorage:', err)
-    }
-  }, [data])
+    fetchFromSupabase()
+  }, [fetchFromSupabase])
 
   // --- Project Actions ---
-  const addProject = (projectFields) => {
+  const addProject = async (projectFields) => {
     const newId = `proj-${Date.now()}`
     const newProject = {
       id: newId,
@@ -170,15 +310,19 @@ export function DataProvider({ children }) {
       ...prev,
       projects: [newProject, ...prev.projects],
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('projects').insert([toDbProject(newProject)])
+    }
     return newProject
   }
 
-  const editProject = (projectId, fields) => {
-    setData((prev) => ({
-      ...prev,
-      projects: prev.projects.map((p) => {
+  const editProject = async (projectId, fields) => {
+    let updatedProj = null
+    setData((prev) => {
+      const nextProjects = prev.projects.map((p) => {
         if (p.id !== projectId) return p
-        return {
+        updatedProj = {
           ...p,
           ...fields,
           progress: fields.progress !== undefined
@@ -188,11 +332,17 @@ export function DataProvider({ children }) {
             ? (Array.isArray(fields.owners) ? fields.owners : String(fields.owners).split(',').map((o) => o.trim()).filter(Boolean))
             : p.owners,
         }
-      }),
-    }))
+        return updatedProj
+      })
+      return { ...prev, projects: nextProjects }
+    })
+
+    if (isSupabaseConfigured && supabase && updatedProj) {
+      await supabase.from('projects').update(toDbProject(updatedProj)).eq('id', projectId)
+    }
   }
 
-  const deleteProject = (projectId) => {
+  const deleteProject = async (projectId) => {
     setData((prev) => {
       const remainingProjects = prev.projects.filter((p) => p.id !== projectId)
       const projectMilestones = prev.milestones.filter((m) => m.projectId === projectId)
@@ -206,10 +356,14 @@ export function DataProvider({ children }) {
         rawUpdates: prev.rawUpdates.filter((u) => u.projectId !== projectId),
       }
     })
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('projects').delete().eq('id', projectId)
+    }
   }
 
   // --- Milestone Actions ---
-  const addMilestone = (projectId, milestoneFields) => {
+  const addMilestone = async (projectId, milestoneFields) => {
     const newMs = {
       id: `ms-${Date.now()}`,
       projectId,
@@ -217,32 +371,45 @@ export function DataProvider({ children }) {
       status: milestoneFields.status || 'open',
       dueDate: milestoneFields.dueDate || '',
     }
+
     setData((prev) => ({
       ...prev,
       milestones: [...prev.milestones, newMs],
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('milestones').insert([toDbMilestone(newMs)])
+    }
     return newMs
   }
 
-  const updateMilestoneStatus = (milestoneId, newStatus) => {
+  const updateMilestoneStatus = async (milestoneId, newStatus) => {
     setData((prev) => ({
       ...prev,
       milestones: prev.milestones.map((m) =>
         m.id === milestoneId ? { ...m, status: newStatus } : m
       ),
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('milestones').update({ status: newStatus }).eq('id', milestoneId)
+    }
   }
 
-  const deleteMilestone = (milestoneId) => {
+  const deleteMilestone = async (milestoneId) => {
     setData((prev) => ({
       ...prev,
       milestones: prev.milestones.filter((m) => m.id !== milestoneId),
       tasks: prev.tasks.filter((t) => t.milestoneId !== milestoneId),
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('milestones').delete().eq('id', milestoneId)
+    }
   }
 
   // --- Task Actions ---
-  const addTask = (milestoneId, taskFields) => {
+  const addTask = async (milestoneId, taskFields) => {
     const newTask = {
       id: `tsk-${Date.now()}`,
       milestoneId,
@@ -250,31 +417,44 @@ export function DataProvider({ children }) {
       owner: taskFields.owner || '',
       status: taskFields.status || 'open',
     }
+
     setData((prev) => ({
       ...prev,
       tasks: [...prev.tasks, newTask],
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('tasks').insert([toDbTask(newTask)])
+    }
     return newTask
   }
 
-  const updateTaskStatus = (taskId, newStatus) => {
+  const updateTaskStatus = async (taskId, newStatus) => {
     setData((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
         t.id === taskId ? { ...t, status: newStatus } : t
       ),
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
+    }
   }
 
-  const deleteTask = (taskId) => {
+  const deleteTask = async (taskId) => {
     setData((prev) => ({
       ...prev,
       tasks: prev.tasks.filter((t) => t.id !== taskId),
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('tasks').delete().eq('id', taskId)
+    }
   }
 
   // --- Issue Actions ---
-  const addIssue = (projectId, issueFields) => {
+  const addIssue = async (projectId, issueFields) => {
     const newIssue = {
       id: `iss-${Date.now()}`,
       projectId,
@@ -282,31 +462,44 @@ export function DataProvider({ children }) {
       category: issueFields.category || 'Implementation',
       status: issueFields.status || 'open',
     }
+
     setData((prev) => ({
       ...prev,
       issues: [...prev.issues, newIssue],
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('issues').insert([toDbIssue(newIssue)])
+    }
     return newIssue
   }
 
-  const updateIssueStatus = (issueId, newStatus) => {
+  const updateIssueStatus = async (issueId, newStatus) => {
     setData((prev) => ({
       ...prev,
       issues: prev.issues.map((i) =>
         i.id === issueId ? { ...i, status: newStatus } : i
       ),
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('issues').update({ status: newStatus }).eq('id', issueId)
+    }
   }
 
-  const deleteIssue = (issueId) => {
+  const deleteIssue = async (issueId) => {
     setData((prev) => ({
       ...prev,
       issues: prev.issues.filter((i) => i.id !== issueId),
     }))
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('issues').delete().eq('id', issueId)
+    }
   }
 
   // --- AI & Raw Updates ---
-  const applyAIParsedUpdate = (projectId, rawText, parsedResult) => {
+  const applyAIParsedUpdate = async (projectId, rawText, parsedResult) => {
     const nowIso = new Date().toISOString()
     const newUpdate = {
       id: `upd-${Date.now()}`,
@@ -318,7 +511,6 @@ export function DataProvider({ children }) {
     }
 
     setData((prev) => {
-      // 1. Update project's lastActivityAt to reset inactivity days count
       let updatedProjects = prev.projects.map((p) => {
         if (p.id !== projectId) return p
         let newStatus = p.status
@@ -332,7 +524,6 @@ export function DataProvider({ children }) {
         }
       })
 
-      // 2. If milestone matched, update milestone status if inferred
       let updatedMilestones = prev.milestones
       if (parsedResult.matchedMilestoneId && parsedResult.inferredStatus) {
         updatedMilestones = prev.milestones.map((m) =>
@@ -342,7 +533,6 @@ export function DataProvider({ children }) {
         )
       }
 
-      // 3. If task matched, update task status if inferred
       let updatedTasks = prev.tasks
       if (parsedResult.matchedTaskId && parsedResult.inferredStatus) {
         updatedTasks = prev.tasks.map((t) =>
@@ -361,18 +551,20 @@ export function DataProvider({ children }) {
       }
     })
 
-    return newUpdate
-  }
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('updates').insert([toDbUpdate(newUpdate)])
+      await supabase.from('projects').update({ last_activity_at: nowIso }).eq('id', projectId)
+    }
 
-  const resetToDefaultSeed = () => {
-    setData(SEED_DATA)
-    localStorage.removeItem(STORAGE_KEY)
+    return newUpdate
   }
 
   return (
     <DataContext.Provider
       value={{
         data,
+        loading,
+        isSupabaseConfigured,
         projects: data.projects,
         milestones: data.milestones,
         tasks: data.tasks,
@@ -392,7 +584,7 @@ export function DataProvider({ children }) {
         updateIssueStatus,
         deleteIssue,
         applyAIParsedUpdate,
-        resetToDefaultSeed,
+        refetch: fetchFromSupabase,
       }}
     >
       {children}
