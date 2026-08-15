@@ -251,7 +251,6 @@ export function DataProvider({ children }) {
   // Fetch initial state directly from Supabase PostgreSQL (NO localStorage for business data)
   const fetchFromSupabase = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
-      // Supabase credentials unconfigured -> fallback to seed data in memory for demo readiness
       setData(SEED_DATA)
       setLoading(false)
       return
@@ -284,19 +283,28 @@ export function DataProvider({ children }) {
           rawUpdates: (uRes.data || []).map(fromDbUpdate),
         })
       } else {
-        // First run on Supabase: Seed PostgreSQL tables with 3 seed projects
+        // First run on Supabase: Seed PostgreSQL tables using upsert to avoid duplicate key conflicts
         console.log('Seeding Supabase PostgreSQL tables with 3 seed projects...')
-        const seedProjRes = await supabase.from('projects').insert(SEED_DATA.projects.map(toDbProject))
-        if (seedProjRes.error) throw seedProjRes.error
+        await supabase.from('projects').upsert(SEED_DATA.projects.map(toDbProject), { onConflict: 'id' })
+        await supabase.from('milestones').upsert(SEED_DATA.milestones.map(toDbMilestone), { onConflict: 'id' })
+        await supabase.from('tasks').upsert(SEED_DATA.tasks.map(toDbTask), { onConflict: 'id' })
+        await supabase.from('issues').upsert(SEED_DATA.issues.map(toDbIssue), { onConflict: 'id' })
+        await supabase.from('updates').upsert(SEED_DATA.rawUpdates.map(toDbUpdate), { onConflict: 'id' })
 
-        await Promise.all([
-          supabase.from('milestones').insert(SEED_DATA.milestones.map(toDbMilestone)),
-          supabase.from('tasks').insert(SEED_DATA.tasks.map(toDbTask)),
-          supabase.from('issues').insert(SEED_DATA.issues.map(toDbIssue)),
-          supabase.from('updates').insert(SEED_DATA.rawUpdates.map(toDbUpdate)),
-        ])
+        // Refetch clean state
+        const refetchedProjects = await supabase.from('projects').select('*')
+        const refetchedMs = await supabase.from('milestones').select('*')
+        const refetchedTsk = await supabase.from('tasks').select('*')
+        const refetchedIss = await supabase.from('issues').select('*')
+        const refetchedUpd = await supabase.from('updates').select('*')
 
-        setData(SEED_DATA)
+        setData({
+          projects: (refetchedProjects.data || SEED_DATA.projects).map(fromDbProject),
+          milestones: (refetchedMs.data || SEED_DATA.milestones).map(fromDbMilestone),
+          tasks: (refetchedTsk.data || SEED_DATA.tasks).map(fromDbTask),
+          issues: (refetchedIss.data || SEED_DATA.issues).map(fromDbIssue),
+          rawUpdates: (refetchedUpd.data || SEED_DATA.rawUpdates).map(fromDbUpdate),
+        })
       }
     } catch (err) {
       console.error('Supabase PostgreSQL fetch error:', err)
