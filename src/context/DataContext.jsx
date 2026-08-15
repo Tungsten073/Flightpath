@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
-const STORAGE_KEY = 'flightpath_app_state_v2'
-
 const SEED_DATA = {
   projects: [
     {
@@ -240,37 +238,27 @@ function toDbUpdate(u) {
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const [data, setData] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
-          return parsed
-        }
-      }
-    } catch (err) {
-      console.warn('Could not read flightpath_app_state_v2:', err)
-    }
-    return SEED_DATA
+  const [data, setData] = useState({
+    projects: [],
+    milestones: [],
+    tasks: [],
+    issues: [],
+    rawUpdates: [],
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Sync to local storage for local fallback
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (err) {
-      console.error('Could not save to localStorage:', err)
-    }
-  }, [data])
-
-  // Fetch initial state from Supabase PostgreSQL
+  // Fetch initial state directly from Supabase PostgreSQL (NO localStorage for business data)
   const fetchFromSupabase = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
+      // Supabase credentials unconfigured -> fallback to seed data in memory for demo readiness
+      setData(SEED_DATA)
       setLoading(false)
       return
     }
+
+    setLoading(true)
+    setError(null)
 
     try {
       const [pRes, mRes, tRes, iRes, uRes] = await Promise.all([
@@ -280,6 +268,12 @@ export function DataProvider({ children }) {
         supabase.from('issues').select('*'),
         supabase.from('updates').select('*'),
       ])
+
+      if (pRes.error) throw pRes.error
+      if (mRes.error) throw mRes.error
+      if (tRes.error) throw tRes.error
+      if (iRes.error) throw iRes.error
+      if (uRes.error) throw uRes.error
 
       if (pRes.data && pRes.data.length > 0) {
         setData({
@@ -292,16 +286,22 @@ export function DataProvider({ children }) {
       } else {
         // First run on Supabase: Seed PostgreSQL tables with 3 seed projects
         console.log('Seeding Supabase PostgreSQL tables with 3 seed projects...')
+        const seedProjRes = await supabase.from('projects').insert(SEED_DATA.projects.map(toDbProject))
+        if (seedProjRes.error) throw seedProjRes.error
+
         await Promise.all([
-          supabase.from('projects').insert(SEED_DATA.projects.map(toDbProject)),
           supabase.from('milestones').insert(SEED_DATA.milestones.map(toDbMilestone)),
           supabase.from('tasks').insert(SEED_DATA.tasks.map(toDbTask)),
           supabase.from('issues').insert(SEED_DATA.issues.map(toDbIssue)),
           supabase.from('updates').insert(SEED_DATA.rawUpdates.map(toDbUpdate)),
         ])
+
+        setData(SEED_DATA)
       }
     } catch (err) {
-      console.warn('Supabase fetch error, using in-memory state:', err)
+      console.error('Supabase PostgreSQL fetch error:', err)
+      setError(`Supabase Error: ${err.message}`)
+      setData(SEED_DATA)
     } finally {
       setLoading(false)
     }
@@ -336,7 +336,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('projects').insert([toDbProject(newProject)])
+      const { error: dbErr } = await supabase.from('projects').insert([toDbProject(newProject)])
+      if (dbErr) {
+        console.error('Failed to insert project to Supabase:', dbErr)
+        throw dbErr
+      }
     }
     return newProject
   }
@@ -362,7 +366,11 @@ export function DataProvider({ children }) {
     })
 
     if (isSupabaseConfigured && supabase && updatedProj) {
-      await supabase.from('projects').update(toDbProject(updatedProj)).eq('id', projectId)
+      const { error: dbErr } = await supabase.from('projects').update(toDbProject(updatedProj)).eq('id', projectId)
+      if (dbErr) {
+        console.error('Failed to update project in Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -382,7 +390,11 @@ export function DataProvider({ children }) {
     })
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('projects').delete().eq('id', projectId)
+      const { error: dbErr } = await supabase.from('projects').delete().eq('id', projectId)
+      if (dbErr) {
+        console.error('Failed to delete project from Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -402,7 +414,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('milestones').insert([toDbMilestone(newMs)])
+      const { error: dbErr } = await supabase.from('milestones').insert([toDbMilestone(newMs)])
+      if (dbErr) {
+        console.error('Failed to insert milestone to Supabase:', dbErr)
+        throw dbErr
+      }
     }
     return newMs
   }
@@ -416,7 +432,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('milestones').update({ status: newStatus }).eq('id', milestoneId)
+      const { error: dbErr } = await supabase.from('milestones').update({ status: newStatus }).eq('id', milestoneId)
+      if (dbErr) {
+        console.error('Failed to update milestone status in Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -428,7 +448,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('milestones').delete().eq('id', milestoneId)
+      const { error: dbErr } = await supabase.from('milestones').delete().eq('id', milestoneId)
+      if (dbErr) {
+        console.error('Failed to delete milestone from Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -448,7 +472,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('tasks').insert([toDbTask(newTask)])
+      const { error: dbErr } = await supabase.from('tasks').insert([toDbTask(newTask)])
+      if (dbErr) {
+        console.error('Failed to insert task to Supabase:', dbErr)
+        throw dbErr
+      }
     }
     return newTask
   }
@@ -462,7 +490,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
+      const { error: dbErr } = await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
+      if (dbErr) {
+        console.error('Failed to update task status in Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -473,7 +505,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('tasks').delete().eq('id', taskId)
+      const { error: dbErr } = await supabase.from('tasks').delete().eq('id', taskId)
+      if (dbErr) {
+        console.error('Failed to delete task from Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -493,7 +529,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('issues').insert([toDbIssue(newIssue)])
+      const { error: dbErr } = await supabase.from('issues').insert([toDbIssue(newIssue)])
+      if (dbErr) {
+        console.error('Failed to insert issue to Supabase:', dbErr)
+        throw dbErr
+      }
     }
     return newIssue
   }
@@ -507,7 +547,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('issues').update({ status: newStatus }).eq('id', issueId)
+      const { error: dbErr } = await supabase.from('issues').update({ status: newStatus }).eq('id', issueId)
+      if (dbErr) {
+        console.error('Failed to update issue status in Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -518,7 +562,11 @@ export function DataProvider({ children }) {
     }))
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from('issues').delete().eq('id', issueId)
+      const { error: dbErr } = await supabase.from('issues').delete().eq('id', issueId)
+      if (dbErr) {
+        console.error('Failed to delete issue from Supabase:', dbErr)
+        throw dbErr
+      }
     }
   }
 
@@ -588,6 +636,7 @@ export function DataProvider({ children }) {
       value={{
         data,
         loading,
+        error,
         isSupabaseConfigured,
         projects: data.projects,
         milestones: data.milestones,

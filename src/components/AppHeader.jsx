@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 
 export default function AppHeader() {
-  const { isSupabaseConfigured } = useData()
+  const { isSupabaseConfigured, error } = useData()
 
   return (
     <header className="app-header">
@@ -17,23 +17,52 @@ export default function AppHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span
-            className="ms-pill"
-            style={{
-              fontSize: '0.68rem',
-              padding: '3px 8px',
-              background: isSupabaseConfigured ? '#005C2B' : 'var(--bg-card)',
-              color: isSupabaseConfigured ? '#FFFFFF' : 'var(--text-secondary)',
-              border: '1.5px solid var(--border-dark)',
-            }}
-            title={
-              isSupabaseConfigured
-                ? 'Supabase PostgreSQL connected as persistent database'
-                : 'Supabase PostgreSQL integration active. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env'
-            }
-          >
-            ⚡ {isSupabaseConfigured ? 'SUPABASE POSTGRESQL CONNECTED' : 'SUPABASE BACKEND READY'}
-          </span>
+          {error ? (
+            <span
+              className="ms-pill"
+              style={{
+                fontSize: '0.68rem',
+                padding: '4px 10px',
+                background: '#8B0000',
+                color: '#FFFFFF',
+                border: '2px solid #5A0000',
+                fontWeight: 700,
+              }}
+              title={error}
+            >
+              ⚠ DATABASE ERROR: {error}
+            </span>
+          ) : isSupabaseConfigured ? (
+            <span
+              className="ms-pill"
+              style={{
+                fontSize: '0.68rem',
+                padding: '4px 10px',
+                background: '#005C2B',
+                color: '#FFFFFF',
+                border: '2px solid #003B1B',
+                fontWeight: 700,
+              }}
+              title="Supabase PostgreSQL is connected as the primary database"
+            >
+              ⚡ SUPABASE POSTGRESQL CONNECTED
+            </span>
+          ) : (
+            <span
+              className="ms-pill"
+              style={{
+                fontSize: '0.68rem',
+                padding: '4px 10px',
+                background: '#854D0E',
+                color: '#FEF08A',
+                border: '2px solid #713F12',
+                fontWeight: 700,
+              }}
+              title="Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env"
+            >
+              ⚠ DATABASE OFFLINE / CONFIGURATION REQUIRED
+            </span>
+          )}
         </div>
       </div>
     </header>
