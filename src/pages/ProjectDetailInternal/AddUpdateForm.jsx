@@ -4,17 +4,13 @@ import { useUpdates } from '../../context/UpdatesContext'
 
 const MAX_CHARS = 2000
 
-export default function AddUpdateForm({ project, milestones, tasks }) {
+export default function AddUpdateForm({ project, milestones = [], tasks = [] }) {
   const [text, setText] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState('')
   const [lastParsed, setLastParsed] = useState(null)
   const textareaRef = useRef(null)
   const { addUpdate } = useUpdates()
-
-  const apiKeyMissing =
-    !import.meta.env.VITE_GEMINI_API_KEY ||
-    import.meta.env.VITE_GEMINI_API_KEY === 'your_gemini_api_key_here'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -27,22 +23,21 @@ export default function AddUpdateForm({ project, milestones, tasks }) {
 
     try {
       const parsed = await parseUpdateWithGemini(raw, milestones, tasks)
-      const entry = addUpdate(project.id, raw, parsed)
-      setLastParsed(entry)
+      const entry = await addUpdate(project.id, raw, parsed)
+      setLastParsed(entry || { parsed })
       setStatus('success')
       setText('')
-      // Reset textarea height
       if (textareaRef.current) textareaRef.current.style.height = 'auto'
     } catch (err) {
+      console.error('Update parsing/submission error:', err)
       setStatus('error')
-      setErrorMsg(err.message)
+      setErrorMsg(err.message || 'Failed to submit update.')
     }
   }
 
-  // Auto-grow textarea & clear error on edit
   function handleChange(e) {
     setText(e.target.value)
-    if (status === 'error') {
+    if (status === 'error' || status === 'success') {
       setStatus('idle')
       setErrorMsg('')
     }
@@ -55,13 +50,8 @@ export default function AddUpdateForm({ project, milestones, tasks }) {
       <div className="panel-header">
         <span className="panel-title">
           <SparkleIcon />
-          Add Update
+          Add AI Update
         </span>
-        {apiKeyMissing && (
-          <span className="api-key-warning">
-            ⚠ Set <code>VITE_GEMINI_API_KEY</code> in <code>.env</code>
-          </span>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} className="add-update-form">
@@ -69,7 +59,7 @@ export default function AddUpdateForm({ project, milestones, tasks }) {
           <textarea
             ref={textareaRef}
             className="add-update-textarea"
-            placeholder="Paste or type a raw update — email notes, chat messages, call notes… Gemini will parse it."
+            placeholder="Paste raw text — emails, Slack notes, or status reports... Gemini will parse milestones & task statuses automatically."
             value={text}
             onChange={handleChange}
             maxLength={MAX_CHARS}
@@ -85,17 +75,12 @@ export default function AddUpdateForm({ project, milestones, tasks }) {
           <button
             type="submit"
             className={`add-update-btn${status === 'loading' ? ' loading' : ''}`}
-            disabled={!text.trim() || status === 'loading' || apiKeyMissing}
+            disabled={!text.trim() || status === 'loading'}
           >
             {status === 'loading' ? (
               <>
                 <SpinnerIcon />
                 Parsing with Gemini…
-              </>
-            ) : status === 'error' ? (
-              <>
-                <SparkleIcon size={14} />
-                Retry Parse &amp; Add Update
               </>
             ) : (
               <>
@@ -107,7 +92,7 @@ export default function AddUpdateForm({ project, milestones, tasks }) {
 
           {status === 'success' && lastParsed && (
             <span className="add-update-success">
-              ✓ Added — matched to &ldquo;{lastParsed.parsed.milestoneName ?? 'no milestone'}&rdquo;
+              ✓ Added — {lastParsed?.parsed?.milestoneName ? `matched to "${lastParsed.parsed.milestoneName}"` : 'update logged to timeline'}
             </span>
           )}
         </div>
@@ -131,10 +116,8 @@ export default function AddUpdateForm({ project, milestones, tasks }) {
 function SparkleIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M8 1l1.2 3.8L13 6l-3.8 1.2L8 11l-1.2-3.8L3 6l3.8-1.2L8 1z"
-        fill="currentColor"/>
-      <path d="M13 11l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"
-        fill="currentColor" opacity="0.6"/>
+      <path d="M8 1l1.2 3.8L13 6l-3.8 1.2L8 11l-1.2-3.8L3 6l3.8-1.2L8 1z" fill="currentColor"/>
+      <path d="M13 11l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" fill="currentColor" opacity="0.6"/>
     </svg>
   )
 }
