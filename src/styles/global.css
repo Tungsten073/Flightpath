@@ -1,0 +1,255 @@
+/* ============================================================
+   FLYTBASE — Neo-Brutalist Retro Terminal Design System
+   ============================================================ */
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* Backgrounds: Warm Tactile Craft Paper / Beige */
+  --bg-base:        #E2DECF;
+  --bg-surface:     #EBE7D8;
+  --bg-card:        #E2DECF;
+  --bg-banner:      #F5C710;
+  --bg-overlay:     rgba(226, 222, 207, 0.95);
+
+  /* Borders & Hairlines (Strict Neo-Brutalist 2.5px Hard Borders) */
+  --border-dark:    #005C2B;
+  --border-black:   #000000;
+  --border-card:    #005C2B;
+  --border-subtle:  rgba(0, 92, 43, 0.2);
+
+  /* Hard Offset Drop Shadows (Static) */
+  --shadow-hard:    4px 4px 0px #005C2B;
+  --shadow-black:   3px 3px 0px #000000;
+  --shadow-yellow:  4px 4px 0px #181816;
+
+  /* Accent Colors */
+  --accent:         #005C2B;
+  --accent-yellow:  #F5C710;
+  --accent-red:     #D84C1C;
+  --accent-blue:    #1193D4;
+  --accent-dim:     #004420;
+
+  /* Text: High Contrast Ink Black & Charcoal */
+  --text-primary:   #181816;
+  --text-secondary: #30251D;
+  --text-muted:     #423E37;
+  --text-faint:     #6B655B;
+
+  /* Status Colors (Retro High-Contrast Badges) */
+  --status-on-track-bg:   #005C2B;
+  --status-on-track-text: #FFFFFF;
+  --status-on-track-border: #003B1B;
+
+  --status-at-risk-bg:    #F5C710;
+  --status-at-risk-text:  #181816;
+  --status-at-risk-border: #005C2B;
+
+  --status-blocked-bg:    #D84C1C;
+  --status-blocked-text:  #FFFFFF;
+  --status-blocked-border: #005C2B;
+
+  --status-completed-bg:   #1193D4;
+  --status-completed-text: #FFFFFF;
+  --status-completed-border: #005C2B;
+
+  /* Milestone / Task status */
+  --ms-done-color:    #005C2B;
+  --ms-open-color:    #B87000;
+  --ms-blocked-color: #D84C1C;
+
+  /* Inactivity flag */
+  --inactive-bg:    #F5C710;
+  --inactive-text:  #181816;
+  --inactive-border: #005C2B;
+
+  /* Typography Families */
+  --font-display: 'Silkscreen', monospace;
+  --font-mono:    'JetBrains Mono', Monaco, monospace;
+  --font-serif:   var(--font-display);
+  --font-sans:    var(--font-mono);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Layout — Strictly 0px Sharp Corners */
+  --max-width: 1240px;
+  --radius-none: 0px;
+  --radius-sm:   0px;
+  --radius-md:   0px;
+  --radius-lg:   0px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 !important; /* Strictly 0px corners across everything */
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-mono);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  /* Fine Halftone Dot Pattern Background */
+  background-image: radial-gradient(rgba(0, 92, 43, 0.12) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+a {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent);
+}
+
+button {
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+ul, ol { list-style: none; }
+
+/* ── Typography Scale (Silkscreen 8-Bit Headers & JetBrains Mono Body) ── */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: clamp(1.4rem, 2.8vw, 2rem);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.1rem;
+  line-height: 1.35;
+}
+
+h4, h5 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.text-sm  { font-size: 0.85rem; }
+.text-xs  { font-size: 0.75rem; }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+.font-semibold { font-weight: 600; }
+.font-bold     { font-weight: 700; }
+
+/* ── Container & Utility Layout ────────────────────────────── */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1; }
+
+/* ── Page Layout ───────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  padding-bottom: var(--space-10);
+}
+
+/* ── Header Topbar ─────────────────────────────────────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-surface);
+  border-bottom: 2.5px solid var(--border-dark);
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 58px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.app-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.app-logo span {
+  color: var(--accent);
+}
+
+/* ── Page Header ───────────────────────────────────────────── */
+.page-header {
+  padding: var(--space-8) 0 var(--space-6);
+}
+
+.page-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: var(--space-2);
+}
+
+/* ── Scrollbars ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb {
+  background: var(--border-dark);
+}
