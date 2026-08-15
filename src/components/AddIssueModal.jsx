@@ -5,34 +5,43 @@ export default function AddIssueModal({ isOpen, onClose, onSubmit }) {
   const [category, setCategory] = useState('Implementation')
   const [status, setStatus] = useState('open')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!title.trim()) {
       setError('Issue title is required.')
       return
     }
 
-    onSubmit({
-      title: title.trim(),
-      category,
-      status,
-    })
-    onClose()
-    setTitle('')
-    setCategory('Implementation')
-    setStatus('open')
-    setError('')
+    setIsSubmitting(true)
+    try {
+      await onSubmit({
+        title: title.trim(),
+        category,
+        status,
+      })
+      onClose()
+      setTitle('')
+      setCategory('Implementation')
+      setStatus('open')
+      setError('')
+    } catch (err) {
+      console.error('Add issue error:', err)
+      setError(err.message || 'Failed to add issue.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content card">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">+ Add Issue</h3>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} type="button">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
@@ -80,11 +89,11 @@ export default function AddIssueModal({ isOpen, onClose, onSubmit }) {
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              + Add Issue
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Adding...' : '+ Add Issue'}
             </button>
           </div>
         </form>

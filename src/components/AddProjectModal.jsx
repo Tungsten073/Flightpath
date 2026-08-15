@@ -14,7 +14,7 @@ export default function AddProjectModal({ isOpen, onClose, onSubmit }) {
 
   if (!isOpen) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -39,7 +39,7 @@ export default function AddProjectModal({ isOpen, onClose, onSubmit }) {
 
     setIsSubmitting(true)
     try {
-      onSubmit({
+      await onSubmit({
         name: name.trim(),
         customer: customer.trim(),
         owners: owners.split(',').map((o) => o.trim()).filter(Boolean),
@@ -58,18 +58,19 @@ export default function AddProjectModal({ isOpen, onClose, onSubmit }) {
       setStatus('On Track')
       setProgress(0)
     } catch (err) {
-      setError(err.message || 'Failed to create project.')
+      console.error('Add Project error:', err)
+      setError(err.message || 'Failed to create project in database.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content card">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">+ Add New Project</h3>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} type="button">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">

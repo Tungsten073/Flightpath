@@ -10,6 +10,7 @@ export default function EditProjectModal({ isOpen, project, onClose, onSubmit })
   const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (project) {
@@ -26,7 +27,7 @@ export default function EditProjectModal({ isOpen, project, onClose, onSubmit })
 
   if (!isOpen || !project) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -45,25 +46,33 @@ export default function EditProjectModal({ isOpen, project, onClose, onSubmit })
       return
     }
 
-    onSubmit(project.id, {
-      name: name.trim(),
-      customer: customer.trim(),
-      owners: owners.split(',').map((o) => o.trim()).filter(Boolean),
-      description: description.trim(),
-      status,
-      progress: progNum,
-      startDate,
-      dueDate,
-    })
-    onClose()
+    setIsSubmitting(true)
+    try {
+      await onSubmit(project.id, {
+        name: name.trim(),
+        customer: customer.trim(),
+        owners: owners.split(',').map((o) => o.trim()).filter(Boolean),
+        description: description.trim(),
+        status,
+        progress: progNum,
+        startDate,
+        dueDate,
+      })
+      onClose()
+    } catch (err) {
+      console.error('Edit project error:', err)
+      setError(err.message || 'Failed to update project.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content card">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">✏ Edit Project</h3>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} type="button">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
@@ -164,11 +173,11 @@ export default function EditProjectModal({ isOpen, project, onClose, onSubmit })
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              Save Changes
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

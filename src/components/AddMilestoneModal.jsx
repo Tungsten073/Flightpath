@@ -5,34 +5,43 @@ export default function AddMilestoneModal({ isOpen, onClose, onSubmit }) {
   const [status, setStatus] = useState('open')
   const [dueDate, setDueDate] = useState('')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) {
       setError('Milestone Name is required.')
       return
     }
 
-    onSubmit({
-      name: name.trim(),
-      status,
-      dueDate,
-    })
-    onClose()
-    setName('')
-    setStatus('open')
-    setDueDate('')
-    setError('')
+    setIsSubmitting(true)
+    try {
+      await onSubmit({
+        name: name.trim(),
+        status,
+        dueDate,
+      })
+      onClose()
+      setName('')
+      setStatus('open')
+      setDueDate('')
+      setError('')
+    } catch (err) {
+      console.error('Add milestone error:', err)
+      setError(err.message || 'Failed to add milestone.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content card">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">+ Add Milestone</h3>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} type="button">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
@@ -76,11 +85,11 @@ export default function AddMilestoneModal({ isOpen, onClose, onSubmit }) {
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              + Add Milestone
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Adding...' : '+ Add Milestone'}
             </button>
           </div>
         </form>

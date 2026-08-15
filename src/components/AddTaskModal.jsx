@@ -6,10 +6,11 @@ export default function AddTaskModal({ isOpen, milestones, onClose, onSubmit }) 
   const [owner, setOwner] = useState('')
   const [status, setStatus] = useState('open')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) {
       setError('Task Name is required.')
@@ -21,24 +22,32 @@ export default function AddTaskModal({ isOpen, milestones, onClose, onSubmit }) 
       return
     }
 
-    onSubmit(targetMsId, {
-      name: name.trim(),
-      owner: owner.trim(),
-      status,
-    })
-    onClose()
-    setName('')
-    setOwner('')
-    setStatus('open')
-    setError('')
+    setIsSubmitting(true)
+    try {
+      await onSubmit(targetMsId, {
+        name: name.trim(),
+        owner: owner.trim(),
+        status,
+      })
+      onClose()
+      setName('')
+      setOwner('')
+      setStatus('open')
+      setError('')
+    } catch (err) {
+      console.error('Add task error:', err)
+      setError(err.message || 'Failed to add task.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content card">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">+ Add Task</h3>
-          <button className="modal-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} type="button">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
@@ -99,11 +108,11 @@ export default function AddTaskModal({ isOpen, milestones, onClose, onSubmit }) 
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              + Add Task
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Adding...' : '+ Add Task'}
             </button>
           </div>
         </form>

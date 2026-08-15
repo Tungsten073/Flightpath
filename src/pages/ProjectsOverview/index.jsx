@@ -83,8 +83,8 @@ export default function ProjectsOverview() {
     'Flightpath Delivery Intelligence',
   ]
 
-  const handleCreateProject = (projectData) => {
-    addProject(projectData)
+  const handleCreateProject = async (projectData) => {
+    await addProject(projectData)
   }
 
   return (

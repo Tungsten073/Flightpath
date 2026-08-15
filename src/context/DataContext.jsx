@@ -146,10 +146,10 @@ function toDbProject(p) {
     description: p.description,
     status: p.status,
     progress: p.progress,
-    created_at: p.createdAt,
-    start_date: p.startDate,
-    due_date: p.dueDate,
-    last_activity_at: p.lastActivityAt,
+    created_at: p.createdAt || null,
+    start_date: p.startDate || null,
+    due_date: p.dueDate || null,
+    last_activity_at: p.lastActivityAt || null,
   }
 }
 
@@ -169,7 +169,7 @@ function toDbMilestone(m) {
     project_id: m.projectId,
     name: m.name,
     status: m.status,
-    due_date: m.dueDate,
+    due_date: m.dueDate || null,
   }
 }
 
