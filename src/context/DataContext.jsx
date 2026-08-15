@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
+const STORAGE_KEY = 'flightpath_app_state_v2'
+
 const SEED_DATA = {
   projects: [
     {
@@ -120,7 +122,7 @@ const SEED_DATA = {
   ],
 }
 
-// Helpers for Database Column Mapping
+// Database Column Mapping Helpers
 function fromDbProject(p) {
   return {
     id: p.id,
@@ -238,8 +240,30 @@ function toDbUpdate(u) {
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const [data, setData] = useState(SEED_DATA)
+  const [data, setData] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+          return parsed
+        }
+      }
+    } catch (err) {
+      console.warn('Could not read flightpath_app_state_v2:', err)
+    }
+    return SEED_DATA
+  })
   const [loading, setLoading] = useState(true)
+
+  // Sync to local storage for local fallback
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    } catch (err) {
+      console.error('Could not save to localStorage:', err)
+    }
+  }, [data])
 
   // Fetch initial state from Supabase PostgreSQL
   const fetchFromSupabase = useCallback(async () => {
