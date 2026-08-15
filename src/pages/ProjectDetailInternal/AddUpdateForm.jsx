@@ -4,7 +4,7 @@ import { useUpdates } from '../../context/UpdatesContext'
 
 const MAX_CHARS = 2000
 
-export default function AddUpdateForm({ project, milestones = [], tasks = [] }) {
+export default function AddUpdateForm({ project, milestones = [], tasks = [], issues = [] }) {
   const [text, setText] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState('')
@@ -22,7 +22,7 @@ export default function AddUpdateForm({ project, milestones = [], tasks = [] }) 
     setLastParsed(null)
 
     try {
-      const parsed = await parseUpdateWithGemini(raw, milestones, tasks)
+      const parsed = await parseUpdateWithGemini(raw, milestones, tasks, issues)
       const entry = await addUpdate(project.id, raw, parsed)
       setLastParsed(entry || { parsed })
       setStatus('success')
@@ -59,7 +59,7 @@ export default function AddUpdateForm({ project, milestones = [], tasks = [] }) 
           <textarea
             ref={textareaRef}
             className="add-update-textarea"
-            placeholder="Paste raw text — emails, Slack notes, or status reports... Gemini will parse milestones & task statuses automatically."
+            placeholder="Paste raw text — emails, Slack notes, or status reports... Gemini will decode Milestones, Tasks, Issues, and Statuses across all sections."
             value={text}
             onChange={handleChange}
             maxLength={MAX_CHARS}
@@ -92,7 +92,7 @@ export default function AddUpdateForm({ project, milestones = [], tasks = [] }) 
 
           {status === 'success' && lastParsed && (
             <span className="add-update-success">
-              ✓ Added — {lastParsed?.parsed?.milestoneName ? `matched to "${lastParsed.parsed.milestoneName}"` : 'update logged to timeline'}
+              ✓ Multi-Entity Update Applied — decoded Milestones, Tasks &amp; Issues across sections.
             </span>
           )}
         </div>

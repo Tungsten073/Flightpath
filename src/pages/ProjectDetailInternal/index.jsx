@@ -139,6 +139,7 @@ export default function ProjectDetailInternal() {
           project={project}
           milestones={projectMilestones}
           tasks={projectTasks}
+          issues={projectIssues}
         />
         <AIParsedUpdatesPanel projectId={id} />
         <MilestonesPanel projectId={id} milestones={projectMilestones} />

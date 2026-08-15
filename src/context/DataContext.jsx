@@ -590,79 +590,139 @@ export function DataProvider({ children }) {
       parsed: parsedResult,
     }
 
-    let createdMs = null
-    let createdTask = null
+    const createdMilestones = []
+    const updatedMilestonesList = []
+    const createdTasks = []
+    const updatedTasksList = []
+    const createdIssues = []
+    const updatedIssuesList = []
 
     setData((prev) => {
-      // Find milestone by ID or name, or first project milestone
-      let targetMs = prev.milestones.find(
-        (m) =>
-          m.projectId === projectId &&
-          (m.id === parsedResult.milestoneId ||
-            (m.name && parsedResult.milestoneName && m.name.toLowerCase().includes(parsedResult.milestoneName.toLowerCase())))
-      )
+      let nextMilestones = [...prev.milestones]
+      let nextTasks = [...prev.tasks]
+      let nextIssues = [...prev.issues]
+      let nextProjects = [...prev.projects]
 
-      if (!targetMs) {
-        targetMs = prev.milestones.find((m) => m.projectId === projectId)
-      }
+      // 1. Process Milestones array
+      const parsedMsList = Array.isArray(parsedResult.milestones) ? parsedResult.milestones : []
+      parsedMsList.forEach((pMs) => {
+        if (!pMs.name) return
+        const existingMs = nextMilestones.find(
+          (m) =>
+            m.projectId === projectId &&
+            (m.id === pMs.id || m.name.toLowerCase().trim() === pMs.name.toLowerCase().trim())
+        )
 
-      let newMilestones = [...prev.milestones]
+        if (existingMs) {
+          existingMs.status = pMs.status || existingMs.status
+          if (pMs.dueDate) existingMs.dueDate = pMs.dueDate
+          updatedMilestonesList.push(existingMs)
+        } else {
+          const newMs = {
+            id: pMs.id || `ms-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            projectId,
+            name: pMs.name.trim(),
+            status: pMs.status || 'open',
+            dueDate: pMs.dueDate || '',
+          }
+          createdMilestones.push(newMs)
+          nextMilestones.push(newMs)
+        }
+      })
 
-      // If no milestone exists for project at all, auto-create one
-      if (!targetMs) {
-        createdMs = {
+      // Ensure at least one milestone exists for project
+      let primaryMs = nextMilestones.find((m) => m.projectId === projectId)
+      if (!primaryMs) {
+        primaryMs = {
           id: `ms-${Date.now()}`,
           projectId,
           name: parsedResult.milestoneName || 'General Delivery Phase',
           status: parsedResult.inferredStatus || 'open',
           dueDate: '',
         }
-        targetMs = createdMs
-        newMilestones.push(createdMs)
+        createdMilestones.push(primaryMs)
+        nextMilestones.push(primaryMs)
       }
 
-      const targetMsId = targetMs.id
+      // 2. Process Tasks array
+      const parsedTaskList = Array.isArray(parsedResult.tasks) ? parsedResult.tasks : []
+      if (parsedTaskList.length === 0 && (parsedResult.taskName || rawText)) {
+        parsedTaskList.push({
+          name: parsedResult.taskName || rawText.trim(),
+          milestoneName: primaryMs.name,
+          status: parsedResult.inferredStatus || 'open',
+        })
+      }
 
-      // Auto-create task from taskName, summary, or rawText
-      const taskTitle = (parsedResult.taskName || parsedResult.summary || rawText).trim()
-      let newTasks = [...prev.tasks]
+      parsedTaskList.forEach((pTask) => {
+        if (!pTask.name) return
+        const targetMs = nextMilestones.find(
+          (m) =>
+            m.projectId === projectId &&
+            (m.name.toLowerCase().trim() === (pTask.milestoneName || '').toLowerCase().trim() || m.id === primaryMs.id)
+        ) || primaryMs
 
-      if (taskTitle && targetMsId) {
-        const existingTask = prev.tasks.find(
-          (t) => t.milestoneId === targetMsId && t.name.toLowerCase() === taskTitle.toLowerCase()
+        const existingTask = nextTasks.find(
+          (t) =>
+            t.milestoneId === targetMs.id &&
+            (t.id === pTask.id || t.name.toLowerCase().trim() === pTask.name.toLowerCase().trim())
         )
-        if (!existingTask) {
-          createdTask = {
-            id: `tsk-${Date.now()}`,
-            milestoneId: targetMsId,
-            name: taskTitle,
-            status: parsedResult.inferredStatus || 'open',
-            owner: 'AI Update',
+
+        if (existingTask) {
+          existingTask.status = pTask.status || existingTask.status
+          if (pTask.owner) existingTask.owner = pTask.owner
+          updatedTasksList.push(existingTask)
+        } else {
+          const newTask = {
+            id: pTask.id || `tsk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            milestoneId: targetMs.id,
+            name: pTask.name.trim(),
+            status: pTask.status || 'open',
+            owner: pTask.owner || 'AI Update',
           }
-          newTasks.push(createdTask)
+          createdTasks.push(newTask)
+          nextTasks.push(newTask)
         }
-      }
+      })
 
-      // Update milestone status if inferred
-      if (targetMsId && parsedResult.inferredStatus) {
-        newMilestones = newMilestones.map((m) =>
-          m.id === targetMsId ? { ...m, status: parsedResult.inferredStatus } : m
+      // 3. Process Issues array
+      const parsedIssueList = Array.isArray(parsedResult.issues) ? parsedResult.issues : []
+      parsedIssueList.forEach((pIss) => {
+        if (!pIss.title) return
+        const existingIss = nextIssues.find(
+          (i) =>
+            i.projectId === projectId &&
+            (i.id === pIss.id || i.title.toLowerCase().trim() === pIss.title.toLowerCase().trim())
         )
-      }
 
-      // Update task status if matched
-      if (parsedResult.taskId && parsedResult.inferredStatus) {
-        newTasks = newTasks.map((t) =>
-          t.id === parsedResult.taskId ? { ...t, status: parsedResult.inferredStatus } : t
-        )
-      }
+        if (existingIss) {
+          existingIss.status = pIss.status || existingIss.status
+          if (pIss.category) existingIss.category = pIss.category
+          updatedIssuesList.push(existingIss)
+        } else {
+          const newIss = {
+            id: pIss.id || `iss-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            projectId,
+            title: pIss.title.trim(),
+            category: pIss.category || 'Implementation',
+            status: pIss.status || 'open',
+          }
+          createdIssues.push(newIss)
+          nextIssues.push(newIss)
+        }
+      })
 
-      // Update project lastActivityAt and status
-      let updatedProjects = prev.projects.map((p) => {
+      // 4. Process Project status update
+      nextProjects = nextProjects.map((p) => {
         if (p.id !== projectId) return p
         let newStatus = p.status
-        if (parsedResult.inferredStatus === 'blocked') newStatus = 'Blocked'
-        else if (parsedResult.inferredStatus === 'done' && p.status === 'Blocked') newStatus = 'On Track'
+        if (parsedResult.projectStatus) {
+          newStatus = parsedResult.projectStatus
+        } else if (parsedResult.inferredStatus === 'blocked' || createdIssues.length > 0) {
+          newStatus = 'Blocked'
+        } else if (parsedResult.inferredStatus === 'done' && p.status === 'Blocked') {
+          newStatus = 'On Track'
+        }
 
         return {
           ...p,
@@ -673,9 +733,10 @@ export function DataProvider({ children }) {
 
       return {
         ...prev,
-        projects: updatedProjects,
-        milestones: newMilestones,
-        tasks: newTasks,
+        projects: nextProjects,
+        milestones: nextMilestones,
+        tasks: nextTasks,
+        issues: nextIssues,
         rawUpdates: [newUpdate, ...prev.rawUpdates],
       }
     })
@@ -685,20 +746,29 @@ export function DataProvider({ children }) {
       await supabase.from('updates').insert([toDbUpdate(newUpdate)])
       await supabase.from('projects').update({ last_activity_at: nowIso }).eq('id', projectId)
 
-      if (createdMs) {
-        await supabase.from('milestones').insert([toDbMilestone(createdMs)])
+      if (parsedResult.projectStatus) {
+        await supabase.from('projects').update({ status: parsedResult.projectStatus }).eq('id', projectId)
       }
 
-      if (parsedResult.milestoneId && parsedResult.inferredStatus) {
-        await supabase.from('milestones').update({ status: parsedResult.inferredStatus }).eq('id', parsedResult.milestoneId)
+      if (createdMilestones.length > 0) {
+        await supabase.from('milestones').insert(createdMilestones.map(toDbMilestone))
+      }
+      for (const m of updatedMilestonesList) {
+        await supabase.from('milestones').update(toDbMilestone(m)).eq('id', m.id)
       }
 
-      if (parsedResult.taskId && parsedResult.inferredStatus) {
-        await supabase.from('tasks').update({ status: parsedResult.inferredStatus }).eq('id', parsedResult.taskId)
+      if (createdTasks.length > 0) {
+        await supabase.from('tasks').insert(createdTasks.map(toDbTask))
+      }
+      for (const t of updatedTasksList) {
+        await supabase.from('tasks').update(toDbTask(t)).eq('id', t.id)
       }
 
-      if (createdTask) {
-        await supabase.from('tasks').insert([toDbTask(createdTask)])
+      if (createdIssues.length > 0) {
+        await supabase.from('issues').insert(createdIssues.map(toDbIssue))
+      }
+      for (const i of updatedIssuesList) {
+        await supabase.from('issues').update(toDbIssue(i)).eq('id', i.id)
       }
     }
 

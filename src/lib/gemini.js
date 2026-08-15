@@ -1,5 +1,6 @@
 /**
- * gemini.js — Gemini API Integration with Smart Fallback & Rule Engine
+ * gemini.js — Gemini Multi-Entity AI Parser & Smart Rule Engine
+ * Decodes raw team updates into Milestones, Tasks, Issues, and Project Statuses.
  */
 
 const API_URL =
@@ -7,99 +8,166 @@ const API_URL =
 
 const REQUEST_TIMEOUT_MS = 15000
 
-function buildPrompt(rawText, milestones, tasks) {
+function buildPrompt(rawText, milestones = [], tasks = [], issues = []) {
   const msLines = milestones.length
-    ? milestones.map((m) => `  • [${m.id}] "${m.name}" — status: ${m.status}, due: ${m.dueDate}`).join('\n')
+    ? milestones.map((m) => `  • [${m.id}] "${m.name}" — status: ${m.status}, due: ${m.dueDate || 'none'}`).join('\n')
     : '  (none)'
 
   const taskLines = tasks.length
     ? tasks.map((t) => `  • [${t.id}] "${t.name}" — status: ${t.status}`).join('\n')
     : '  (none)'
 
-  return `You are a project delivery assistant parsing a raw team update into structured JSON.
+  const issueLines = issues.length
+    ? issues.map((i) => `  • [${i.id}] "${i.title}" — category: ${i.category}, status: ${i.status}`).join('\n')
+    : '  (none)'
 
-PROJECT MILESTONES:
+  return `You are a project delivery intelligence assistant parsing a raw team message into structured multi-entity JSON updates.
+
+EXISTING MILESTONES:
 ${msLines}
 
-PROJECT TASKS:
+EXISTING TASKS:
 ${taskLines}
+
+EXISTING ISSUES:
+${issueLines}
 
 RAW UPDATE TEXT:
 """
 ${rawText}
 """
 
-Analyse the raw text above and return a JSON object with exactly these fields:
+Analyse the message and extract updates for ALL relevant sections. Return a JSON object with this EXACT schema:
 
 {
-  "milestoneId":   "<id of the most relevant milestone, or null>",
-  "milestoneName": "<name of that milestone, or null>",
-  "taskId":        "<id of the most relevant task within that milestone, or null>",
-  "taskName":      "<name or description of the task mentioned in update, or null>",
-  "summary":       "<one professional sentence summarising the update — suitable for a customer-facing changelog; omit owner names and internal jargon>",
-  "inferredStatus": "<new status implied for the matched milestone or task: one of open | blocked | done — or null if no status change is implied>",
-  "confidence":    "<high | medium | low>"
-}`
+  "milestones": [
+    {
+      "id": "<existing milestone id if matched, or null>",
+      "name": "<name of milestone>",
+      "status": "<open | blocked | done | null>",
+      "dueDate": "<YYYY-MM-DD format if mentioned, or null>"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "<existing task id if matched, or null>",
+      "milestoneName": "<name of target milestone>",
+      "name": "<task name>",
+      "status": "<open | blocked | done>",
+      "owner": "<owner name if mentioned, or null>"
+    }
+  ],
+  "issues": [
+    {
+      "id": "<existing issue id if matched, or null>",
+      "title": "<issue or blocker title>",
+      "category": "<Bug | Feature Request | Question | Support | Implementation>",
+      "status": "<open | closed>"
+    }
+  ],
+  "projectStatus": "<On Track | At Risk | Blocked | Completed | null>",
+  "summary": "<one concise professional customer-facing summary sentence>",
+  "confidence": "<high | medium | low>"
+}
+
+Rules:
+1. Match existing IDs if the text refers to existing items.
+2. If text introduces a new milestone, task, or issue, set "id" to null so it will be created.
+3. If an issue or blocker is mentioned (e.g. "blocked by legal", "packet loss", "surveys stuck"), include an item in "issues" array.
+4. "summary" must be neutral and customer-facing.`
 }
 
 /**
- * Smart Rule-Based Fallback Parser (guarantees zero UI crashes)
+ * Smart Multi-Entity Fallback Rule Parser
  */
-function parseUpdateLocally(rawText, milestones = [], tasks = []) {
+function parseUpdateLocally(rawText, milestones = [], tasks = [], issues = []) {
   const lower = rawText.toLowerCase()
-  let inferredStatus = null
+
+  let inferredStatus = 'open'
   if (lower.includes('complete') || lower.includes('done') || lower.includes('finish') || lower.includes('passed')) {
     inferredStatus = 'done'
-  } else if (lower.includes('block') || lower.includes('stuck') || lower.includes('issue') || lower.includes('delay')) {
+  } else if (lower.includes('block') || lower.includes('stuck') || lower.includes('issue') || lower.includes('delay') || lower.includes('kicked back')) {
     inferredStatus = 'blocked'
-  } else if (lower.includes('progress') || lower.includes('start') || lower.includes('working') || lower.includes('add')) {
-    inferredStatus = 'open'
   }
 
-  // Match milestone by name keyword
+  // 1. Milestone matching
   let matchedMs = milestones.find((m) =>
     m.name && lower.includes(m.name.toLowerCase().split(' ')[0])
   )
-  if (!matchedMs && milestones.length > 0) {
-    matchedMs = milestones[0]
+  const msList = []
+  if (matchedMs) {
+    msList.push({
+      id: matchedMs.id,
+      name: matchedMs.name,
+      status: inferredStatus,
+      dueDate: matchedMs.dueDate || null,
+    })
+  } else if (milestones.length > 0) {
+    msList.push({
+      id: milestones[0].id,
+      name: milestones[0].name,
+      status: inferredStatus,
+      dueDate: milestones[0].dueDate || null,
+    })
   }
 
-  // Match existing task
-  let matchedTask = tasks.find((t) =>
-    t.name && lower.includes(t.name.toLowerCase().split(' ')[0])
-  )
+  // 2. Task extraction
+  const taskList = []
+  let matchedTask = tasks.find((t) => t.name && lower.includes(t.name.toLowerCase().split(' ')[0]))
+  const taskTitle = matchedTask ? matchedTask.name : rawText.trim()
+  const targetMsName = matchedMs ? matchedMs.name : (milestones[0]?.name || 'General Phase')
 
-  // Extract task name if user mentions adding a task or feature
-  let extractedTaskName = matchedTask ? matchedTask.name : null
-  if (!extractedTaskName && (lower.includes('task') || lower.includes('add') || lower.includes('feature') || lower.includes('functionality'))) {
-    extractedTaskName = rawText.trim()
+  taskList.push({
+    id: matchedTask ? matchedTask.id : null,
+    milestoneName: targetMsName,
+    name: taskTitle,
+    status: inferredStatus,
+    owner: null,
+  })
+
+  // 3. Issue extraction
+  const issueList = []
+  if (inferredStatus === 'blocked' || lower.includes('issue') || lower.includes('bug') || lower.includes('legal') || lower.includes('stuck')) {
+    let matchedIssue = issues.find((i) => i.title && lower.includes(i.title.toLowerCase().split(' ')[0]))
+    issueList.push({
+      id: matchedIssue ? matchedIssue.id : null,
+      title: matchedIssue ? matchedIssue.title : rawText.trim(),
+      category: lower.includes('bug') ? 'Bug' : lower.includes('feature') ? 'Feature Request' : lower.includes('question') ? 'Question' : 'Implementation',
+      status: 'open',
+    })
   }
 
-  const cleanSummary = rawText.length > 100 ? `${rawText.substring(0, 97)}...` : rawText
+  // 4. Project overall status
+  let projectStatus = null
+  if (inferredStatus === 'blocked') projectStatus = 'Blocked'
+  else if (inferredStatus === 'done') projectStatus = 'On Track'
 
   return {
-    milestoneId: matchedMs ? matchedMs.id : (milestones[0]?.id || null),
-    milestoneName: matchedMs ? matchedMs.name : (milestones[0]?.name || null),
-    taskId: matchedTask ? matchedTask.id : null,
-    taskName: extractedTaskName,
-    summary: cleanSummary,
-    inferredStatus: inferredStatus || 'open',
+    milestoneId: msList[0]?.id || null,
+    milestoneName: targetMsName,
+    taskId: taskList[0]?.id || null,
+    taskName: taskTitle,
+    milestones: msList,
+    tasks: taskList,
+    issues: issueList,
+    projectStatus,
+    summary: rawText.length > 90 ? `${rawText.substring(0, 87)}...` : rawText,
+    inferredStatus,
     confidence: 'medium',
   }
 }
 
 /**
- * Call the Gemini API and return the structured update object.
- * Includes local smart fallback if API key or endpoint fails.
+ * Call the Gemini API and return structured multi-entity updates.
  */
-export async function parseUpdateWithGemini(rawText, milestones = [], tasks = []) {
+export async function parseUpdateWithGemini(rawText, milestones = [], tasks = [], issues = []) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY
 
   if (!apiKey || apiKey === 'your_gemini_api_key_here') {
-    return parseUpdateLocally(rawText, milestones, tasks)
+    return parseUpdateLocally(rawText, milestones, tasks, issues)
   }
 
-  const prompt = buildPrompt(rawText, milestones, tasks)
+  const prompt = buildPrompt(rawText, milestones, tasks, issues)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
@@ -120,15 +188,15 @@ export async function parseUpdateWithGemini(rawText, milestones = [], tasks = []
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      console.warn(`Gemini API returned status ${response.status}, falling back to smart rule parser.`)
-      return parseUpdateLocally(rawText, milestones, tasks)
+      console.warn(`Gemini API status ${response.status}, using smart fallback rule engine.`)
+      return parseUpdateLocally(rawText, milestones, tasks, issues)
     }
 
     const data = await response.json()
     const rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
     if (!rawOutput.trim()) {
-      return parseUpdateLocally(rawText, milestones, tasks)
+      return parseUpdateLocally(rawText, milestones, tasks, issues)
     }
 
     const cleaned = rawOutput
@@ -137,20 +205,30 @@ export async function parseUpdateWithGemini(rawText, milestones = [], tasks = []
       .trim()
 
     const parsed = JSON.parse(cleaned)
-    const matchedMs = milestones.find((m) => m.id === parsed.milestoneId) || milestones[0]
+
+    const milestoneList = Array.isArray(parsed.milestones) ? parsed.milestones : []
+    const taskList = Array.isArray(parsed.tasks) ? parsed.tasks : []
+    const issueList = Array.isArray(parsed.issues) ? parsed.issues : []
+
+    const firstMs = milestoneList[0] || {}
+    const firstTask = taskList[0] || {}
 
     return {
-      milestoneId: parsed.milestoneId || (matchedMs?.id || null),
-      milestoneName: parsed.milestoneName || (matchedMs?.name || null),
-      taskId: parsed.taskId || null,
-      taskName: parsed.taskName || (rawText.toLowerCase().includes('task') || rawText.toLowerCase().includes('add') ? rawText : null),
+      milestoneId: firstMs.id || parsed.milestoneId || (milestones[0]?.id || null),
+      milestoneName: firstMs.name || parsed.milestoneName || (milestones[0]?.name || null),
+      taskId: firstTask.id || parsed.taskId || null,
+      taskName: firstTask.name || parsed.taskName || rawText,
+      milestones: milestoneList,
+      tasks: taskList,
+      issues: issueList,
+      projectStatus: parsed.projectStatus || null,
       summary: parsed.summary || rawText,
-      inferredStatus: ['open', 'blocked', 'done'].includes(parsed.inferredStatus) ? parsed.inferredStatus : 'open',
-      confidence: parsed.confidence || 'medium',
+      inferredStatus: firstMs.status || firstTask.status || 'open',
+      confidence: parsed.confidence || 'high',
     }
   } catch (err) {
     clearTimeout(timeoutId)
-    console.warn('Gemini API call failed, using smart fallback parser:', err.message)
-    return parseUpdateLocally(rawText, milestones, tasks)
+    console.warn('Gemini API call failed, using fallback parser:', err.message)
+    return parseUpdateLocally(rawText, milestones, tasks, issues)
   }
 }
