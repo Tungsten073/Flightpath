@@ -1,13 +1,11 @@
 import { useParams, Link } from 'react-router-dom'
-import mockData from '@data'
+import { useData } from '../../context/DataContext'
 import Breadcrumb from '../../components/Breadcrumb'
 import NavTabs from '../../components/NavTabs'
 import StatusBadge from '../../components/StatusBadge'
 import MilestoneTaskTree from './MilestoneTaskTree'
 import CustomerIssues from './CustomerIssues'
 import CustomerAIUpdates from './CustomerAIUpdates'
-
-const { projects, milestones, tasks, issues } = mockData
 
 function formatDate(isoDate) {
   if (!isoDate) return ''
@@ -18,6 +16,7 @@ function formatDate(isoDate) {
 
 export default function ProjectDetailCustomer() {
   const { id } = useParams()
+  const { projects, milestones, tasks, issues } = useData()
 
   const project = projects.find((p) => p.id === id)
 
@@ -43,7 +42,8 @@ export default function ProjectDetailCustomer() {
     (i) => i.projectId === id && !INTERNAL_CATEGORIES.has(i.category) && i.status !== 'closed'
   )
 
-  const lastActive = project.lastActivityAt || project.lastActive
+  const lastActive = project.lastActivityAt || project.lastActive || project.createdAt
+  const progressVal = project.progress !== undefined ? project.progress : 0
 
   return (
     <div className="page container">
@@ -68,9 +68,23 @@ export default function ProjectDetailCustomer() {
           <NavTabs active="customer" projectId={id} />
         </div>
 
+        {/* Customer Progress Bar */}
+        <div className="card mb-4" style={{ padding: '12px 16px' }}>
+          <div className="flex justify-between items-center text-xs font-mono mb-2" style={{ fontWeight: 700 }}>
+            <span>PROJECT OVERALL PROGRESS</span>
+            <span>{progressVal}%</span>
+          </div>
+          <div className="progress-bar-track" style={{ height: '10px' }}>
+            <div
+              className="progress-bar-fill"
+              style={{ width: `${progressVal}%`, height: '100%' }}
+            />
+          </div>
+        </div>
+
         <div className="flex items-center gap-3 flex-wrap" style={{ marginTop: '16px' }}>
           <StatusBadge status={project.status} />
-          <span className="text-sm text-muted" style={{ marginLeft: 'auto' }}>
+          <span className="text-sm text-muted font-mono" style={{ marginLeft: 'auto' }}>
             Last Active: {formatDate(lastActive)}
           </span>
         </div>

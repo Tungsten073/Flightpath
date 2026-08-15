@@ -1,57 +1,110 @@
-import MsPill from '../../components/MsPill'
+import { useState } from 'react'
+import { useData } from '../../context/DataContext'
+import AddTaskModal from '../../components/AddTaskModal'
 
 export default function TasksPanel({ milestones, tasks }) {
+  const { addTask, updateTaskStatus, deleteTask } = useData()
+  const [isAddOpen, setIsAddOpen] = useState(false)
+
   const msWithTasks = milestones.map((ms) => ({
     ...ms,
     tasks: tasks.filter((t) => t.milestoneId === ms.id),
-  })).filter((ms) => ms.tasks.length > 0)
+  }))
 
-  if (!msWithTasks.length) {
-    return (
-      <div className="panel-section">
-        <div className="panel-header">
-          <span className="panel-title"><CheckIcon />Tasks</span>
-        </div>
-        <div className="panel-empty">No tasks for this project.</div>
-      </div>
-    )
+  const handleStatusToggle = (taskId, currentStatus) => {
+    const nextStatusMap = { open: 'done', done: 'blocked', blocked: 'open' }
+    const nextStatus = nextStatusMap[currentStatus] || 'open'
+    updateTaskStatus(taskId, nextStatus)
+  }
+
+  const handleAddTask = (milestoneId, taskFields) => {
+    addTask(milestoneId, taskFields)
   }
 
   return (
     <div className="panel-section">
-      <div className="panel-header">
+      <div className="panel-header flex justify-between items-center">
         <span className="panel-title"><CheckIcon />Tasks</span>
-        <span className="panel-count">{tasks.length}</span>
+        <div className="flex items-center gap-3">
+          <span className="panel-count">{tasks.length}</span>
+          <button
+            className="btn btn-primary"
+            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+            onClick={() => setIsAddOpen(true)}
+            disabled={milestones.length === 0}
+            title={milestones.length === 0 ? 'Create a milestone first to add tasks' : 'Add task'}
+          >
+            + Add Task
+          </button>
+        </div>
       </div>
+
       <div className="panel-body">
-        {msWithTasks.map((ms) => (
-          <div key={ms.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* Milestone label */}
-            <div style={{
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: 'var(--text-faint)',
-              paddingLeft: '4px',
-            }}>
-              {ms.name}
-            </div>
-            {/* Task rows */}
-            <div className="task-group">
-              {ms.tasks.map((task) => (
-                <div key={task.id} className="task-row">
-                  <span className="task-name">{task.name}</span>
-                  <div className="task-meta">
-                    <span className="owner-chip">{task.owner}</span>
-                    <MsPill status={task.status} />
-                  </div>
+        {msWithTasks.length > 0 && tasks.length > 0 ? (
+          msWithTasks.map((ms) => (
+            ms.tasks.length > 0 && (
+              <div key={ms.id} className="mb-4 flex flex-col gap-2">
+                <div style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: 'var(--text-faint)',
+                  paddingLeft: '4px',
+                }}>
+                  {ms.name}
                 </div>
-              ))}
-            </div>
+                <div className="task-group">
+                  {ms.tasks.map((task) => (
+                    <div key={task.id} className="task-row flex justify-between items-center py-2 border-b border-subtle">
+                      <span className="task-name">{task.name}</span>
+                      <div className="task-meta flex items-center gap-2">
+                        {task.owner && <span className="owner-chip">{task.owner}</span>}
+                        <button
+                          type="button"
+                          className={`ms-pill ms-pill-${task.status} ${task.status} cursor-pointer`}
+                          onClick={() => handleStatusToggle(task.id, task.status)}
+                          title="Click to toggle status (OPEN -> DONE -> BLOCKED)"
+                        >
+                          {task.status.toUpperCase()}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-muted hover:text-danger ml-1"
+                          onClick={() => deleteTask(task.id)}
+                          title="Delete task"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          ))
+        ) : (
+          <div className="panel-empty p-4 text-center">
+            <p className="text-muted text-sm mb-2 font-mono">No tasks yet.</p>
+            {milestones.length > 0 && (
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: '0.78rem' }}
+                onClick={() => setIsAddOpen(true)}
+              >
+                + Add Task
+              </button>
+            )}
           </div>
-        ))}
+        )}
       </div>
+
+      <AddTaskModal
+        isOpen={isAddOpen}
+        milestones={milestones}
+        onClose={() => setIsAddOpen(false)}
+        onSubmit={handleAddTask}
+      />
     </div>
   )
 }

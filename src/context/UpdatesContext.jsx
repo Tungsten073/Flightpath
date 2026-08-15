@@ -1,50 +1,23 @@
-import { createContext, useContext, useState, useCallback } from 'react'
-
-/**
- * UpdatesContext — holds AI-parsed updates per project in memory for the session.
- *
- * Shape of each entry in the updates array:
- * {
- *   id:        string          — unique "ai-<timestamp>"
- *   projectId: string
- *   timestamp: string          — ISO string, current time at submission
- *   rawText:   string          — original user input
- *   parsed: {
- *     milestoneId:    string | null
- *     milestoneName:  string | null
- *     taskId:         string | null
- *     taskName:       string | null
- *     summary:        string          — customer-safe one-liner
- *     inferredStatus: 'open'|'blocked'|'done'|null
- *     confidence:     'high'|'medium'|'low'
- *   }
- * }
- */
+import { createContext, useContext, useCallback } from 'react'
+import { useData } from './DataContext'
 
 const UpdatesContext = createContext(null)
 
 export function UpdatesProvider({ children }) {
-  // { [projectId]: entry[] }  — newest first
-  const [updatesByProject, setUpdatesByProject] = useState({})
+  const { rawUpdates, applyAIParsedUpdate } = useData()
 
-  const addUpdate = useCallback((projectId, rawText, parsed) => {
-    const entry = {
-      id: `ai-${Date.now()}`,
-      projectId,
-      timestamp: new Date().toISOString(),
-      rawText,
-      parsed,
-    }
-    setUpdatesByProject((prev) => ({
-      ...prev,
-      [projectId]: [entry, ...(prev[projectId] ?? [])],
-    }))
-    return entry
-  }, [])
+  const addUpdate = useCallback(
+    (projectId, rawText, parsed) => {
+      return applyAIParsedUpdate(projectId, rawText, parsed)
+    },
+    [applyAIParsedUpdate]
+  )
 
   const getUpdates = useCallback(
-    (projectId) => updatesByProject[projectId] ?? [],
-    [updatesByProject]
+    (projectId) => {
+      return rawUpdates.filter((u) => u.projectId === projectId)
+    },
+    [rawUpdates]
   )
 
   return (
