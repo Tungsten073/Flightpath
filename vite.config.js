@@ -10,8 +10,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // @data resolves to the single source-of-truth mockData.json at project root
-      '@data': path.resolve(__dirname, '../mockData.json'),
+      // @data resolves to mockData.json inside the repository
+      '@data': path.resolve(__dirname, './mockData.json'),
     },
   },
 })

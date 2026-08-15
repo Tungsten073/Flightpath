@@ -1,0 +1,149 @@
+{
+  "projects": [
+    {
+      "id": "proj-001",
+      "name": "Skyline Logistics - Drone Fleet Onboarding",
+      "customer": "Skyline Logistics",
+      "owners": ["Priya Nair", "Alex Chen"],
+      "status": "On Track",
+      "createdAt": "2026-05-12",
+      "lastActivityAt": "2026-08-10"
+    },
+    {
+      "id": "proj-002",
+      "name": "Meridian Energy - Inspection Rollout Phase 2",
+      "customer": "Meridian Energy",
+      "owners": ["Rahul Verma"],
+      "status": "At Risk",
+      "createdAt": "2026-04-01",
+      "lastActivityAt": "2026-07-02"
+    },
+    {
+      "id": "proj-003",
+      "name": "Coastal Ports Authority - Perimeter Monitoring",
+      "customer": "Coastal Ports Authority",
+      "owners": ["Priya Nair", "Sofia Martins"],
+      "status": "On Track",
+      "createdAt": "2026-06-20",
+      "lastActivityAt": "2026-08-13"
+    },
+    {
+      "id": "proj-004",
+      "name": "Northwind Agritech - Crop Survey Integration",
+      "customer": "Northwind Agritech",
+      "owners": ["Alex Chen"],
+      "status": "Blocked",
+      "createdAt": "2026-03-15",
+      "lastActivityAt": "2026-06-18"
+    },
+    {
+      "id": "proj-005",
+      "name": "Vantage Mining Co - Site Automation Pilot",
+      "customer": "Vantage Mining Co",
+      "owners": ["Sofia Martins", "Rahul Verma"],
+      "status": "On Track",
+      "createdAt": "2026-07-01",
+      "lastActivityAt": "2026-08-14"
+    },
+    {
+      "id": "proj-006",
+      "name": "Harbor City PD - Public Safety Deployment",
+      "customer": "Harbor City PD",
+      "owners": ["Priya Nair"],
+      "status": "Completed",
+      "createdAt": "2026-01-10",
+      "lastActivityAt": "2026-05-30"
+    }
+  ],
+
+  "milestones": [
+    { "id": "ms-001", "projectId": "proj-001", "name": "Kickoff & Requirements Gathering", "status": "done", "dueDate": "2026-05-20" },
+    { "id": "ms-002", "projectId": "proj-001", "name": "Fleet Hardware Provisioning", "status": "done", "dueDate": "2026-06-15" },
+    { "id": "ms-003", "projectId": "proj-001", "name": "Software Integration & Testing", "status": "open", "dueDate": "2026-08-25" },
+    { "id": "ms-004", "projectId": "proj-001", "name": "Go-Live", "status": "open", "dueDate": "2026-09-10" },
+
+    { "id": "ms-005", "projectId": "proj-002", "name": "Phase 1 Handover", "status": "done", "dueDate": "2026-04-15" },
+    { "id": "ms-006", "projectId": "proj-002", "name": "Additional Site Surveys", "status": "blocked", "dueDate": "2026-07-01" },
+    { "id": "ms-007", "projectId": "proj-002", "name": "Regulatory Approval", "status": "blocked", "dueDate": "2026-07-20" },
+
+    { "id": "ms-008", "projectId": "proj-003", "name": "Site Assessment", "status": "done", "dueDate": "2026-06-30" },
+    { "id": "ms-009", "projectId": "proj-003", "name": "Perimeter Sensor Deployment", "status": "open", "dueDate": "2026-08-20" },
+    { "id": "ms-010", "projectId": "proj-003", "name": "Dashboard Configuration", "status": "open", "dueDate": "2026-09-01" },
+
+    { "id": "ms-011", "projectId": "proj-004", "name": "Data Pipeline Design", "status": "done", "dueDate": "2026-03-30" },
+    { "id": "ms-012", "projectId": "proj-004", "name": "Crop Survey API Integration", "status": "blocked", "dueDate": "2026-05-15" },
+
+    { "id": "ms-013", "projectId": "proj-005", "name": "Pilot Site Setup", "status": "done", "dueDate": "2026-07-15" },
+    { "id": "ms-014", "projectId": "proj-005", "name": "Automation Workflow Testing", "status": "open", "dueDate": "2026-08-28" },
+
+    { "id": "ms-015", "projectId": "proj-006", "name": "Full Deployment", "status": "done", "dueDate": "2026-05-25" },
+    { "id": "ms-016", "projectId": "proj-006", "name": "Handover & Training", "status": "done", "dueDate": "2026-05-30" }
+  ],
+
+  "tasks": [
+    { "id": "tsk-001", "milestoneId": "ms-003", "name": "Configure telemetry data sync", "status": "open", "owner": "Alex Chen" },
+    { "id": "tsk-002", "milestoneId": "ms-003", "name": "Run integration test suite", "status": "open", "owner": "Priya Nair" },
+    { "id": "tsk-003", "milestoneId": "ms-003", "name": "UAT sign-off with customer", "status": "open", "owner": "Alex Chen" },
+
+    { "id": "tsk-004", "milestoneId": "ms-006", "name": "Schedule site survey team", "status": "blocked", "owner": "Rahul Verma" },
+    { "id": "tsk-005", "milestoneId": "ms-007", "name": "Submit airspace clearance application", "status": "blocked", "owner": "Rahul Verma" },
+
+    { "id": "tsk-006", "milestoneId": "ms-009", "name": "Install perimeter sensors - Zone A", "status": "done", "owner": "Sofia Martins" },
+    { "id": "tsk-007", "milestoneId": "ms-009", "name": "Install perimeter sensors - Zone B", "status": "open", "owner": "Sofia Martins" },
+    { "id": "tsk-008", "milestoneId": "ms-010", "name": "Set up alert thresholds", "status": "open", "owner": "Priya Nair" },
+
+    { "id": "tsk-009", "milestoneId": "ms-012", "name": "Resolve API auth mismatch with vendor", "status": "blocked", "owner": "Alex Chen" },
+
+    { "id": "tsk-010", "milestoneId": "ms-014", "name": "Run automated workflow test batch 1", "status": "done", "owner": "Rahul Verma" },
+    { "id": "tsk-011", "milestoneId": "ms-014", "name": "Run automated workflow test batch 2", "status": "open", "owner": "Sofia Martins" }
+  ],
+
+  "issues": [
+    { "id": "iss-001", "projectId": "proj-001", "title": "Telemetry sync drops packets under load", "category": "Bug", "status": "open" },
+    { "id": "iss-002", "projectId": "proj-001", "title": "Request for custom flight-log export format", "category": "Feature Request", "status": "open" },
+    { "id": "iss-003", "projectId": "proj-002", "title": "Clarify airspace clearance requirements for Zone C", "category": "Question", "status": "open" },
+    { "id": "iss-004", "projectId": "proj-002", "title": "Site survey scheduling conflict", "category": "Support", "status": "open" },
+    { "id": "iss-005", "projectId": "proj-003", "title": "Sensor firmware update needed for Zone B hardware", "category": "Implementation", "status": "in progress" },
+    { "id": "iss-006", "projectId": "proj-004", "title": "Vendor API auth token expiring prematurely", "category": "Bug", "status": "open" },
+    { "id": "iss-007", "projectId": "proj-005", "title": "Request for multi-site automation dashboard view", "category": "Feature Request", "status": "open" },
+    { "id": "iss-008", "projectId": "proj-006", "title": "Post-deployment training follow-up question", "category": "Question", "status": "closed" }
+  ],
+
+  "rawUpdates": [
+    {
+      "id": "upd-001",
+      "projectId": "proj-001",
+      "channel": "email",
+      "rawText": "Hi team, quick update - we finished provisioning all 12 drones for Skyline yesterday. Software integration testing kicked off this morning, Alex is running the telemetry sync config today and Priya will start the integration test suite tomorrow. We're on track for the Aug 25 milestone but flagging that we saw some packet drops during load testing, logged as a bug. Will keep you posted.",
+      "timestamp": "2026-08-10T14:32:00Z"
+    },
+    {
+      "id": "upd-002",
+      "projectId": "proj-002",
+      "channel": "chat",
+      "rawText": "hey so meridian's regulatory approval is stuck again, the airspace clearance app got kicked back for missing zone C documentation. rahul is following up with legal but this is blocking both the site survey and approval milestones. no new movement expected before next week at earliest",
+      "timestamp": "2026-07-02T09:15:00Z"
+    },
+    {
+      "id": "upd-003",
+      "projectId": "proj-003",
+      "channel": "call",
+      "rawText": "Call notes 8/13 - Coastal Ports check-in. Zone A sensor install complete and looking good. Zone B install in progress, Sofia expects to wrap by end of week pending a firmware update on the new hardware batch. Customer asked about dashboard alert thresholds, told them we'll configure those once Zone B is done. Overall still tracking to the Sept 1 dashboard config milestone.",
+      "timestamp": "2026-08-13T16:00:00Z"
+    },
+    {
+      "id": "upd-004",
+      "projectId": "proj-004",
+      "channel": "email",
+      "rawText": "Following up on the Northwind integration - we're still blocked on the vendor's API auth token expiring every 15 minutes instead of the documented 24 hours. Opened a bug with them, no ETA yet on a fix. This has now been blocking the crop survey API integration milestone for about three weeks. Alex is chasing the vendor daily but no real progress to report since mid-June.",
+      "timestamp": "2026-06-18T11:20:00Z"
+    },
+    {
+      "id": "upd-005",
+      "projectId": "proj-005",
+      "channel": "chat",
+      "rawText": "vantage update: automation workflow test batch 1 passed all checks, rahul ran it yesterday. sofia is kicking off batch 2 today. customer also asked if we could support a multi-site view for automation dashboards across their other locations - logging that as a feature request. things are moving well overall, on track for testing wrap-up by end of month",
+      "timestamp": "2026-08-14T10:05:00Z"
+    }
+  ]
+}
