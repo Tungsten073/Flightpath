@@ -11,14 +11,17 @@ export default function TasksPanel({ milestones, tasks }) {
     tasks: tasks.filter((t) => t.milestoneId === ms.id),
   }))
 
-  const handleStatusToggle = (taskId, currentStatus) => {
+  const knownMsIds = new Set(milestones.map((m) => m.id))
+  const orphanedTasks = tasks.filter((t) => !knownMsIds.has(t.milestoneId))
+
+  const handleStatusToggle = async (taskId, currentStatus) => {
     const nextStatusMap = { open: 'done', done: 'blocked', blocked: 'open' }
     const nextStatus = nextStatusMap[currentStatus] || 'open'
-    updateTaskStatus(taskId, nextStatus)
+    await updateTaskStatus(taskId, nextStatus)
   }
 
-  const handleAddTask = (milestoneId, taskFields) => {
-    addTask(milestoneId, taskFields)
+  const handleAddTask = async (milestoneId, taskFields) => {
+    await addTask(milestoneId, taskFields)
   }
 
   return (
@@ -40,24 +43,67 @@ export default function TasksPanel({ milestones, tasks }) {
       </div>
 
       <div className="panel-body">
-        {msWithTasks.length > 0 && tasks.length > 0 ? (
-          msWithTasks.map((ms) => (
-            ms.tasks.length > 0 && (
-              <div key={ms.id} className="mb-4 flex flex-col gap-2">
+        {tasks.length > 0 ? (
+          <>
+            {msWithTasks.map((ms) => (
+              ms.tasks.length > 0 && (
+                <div key={ms.id} className="mb-4 flex flex-col gap-2">
+                  <div style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: 'var(--accent-green, #005C2B)',
+                    paddingLeft: '4px',
+                  }}>
+                    Milestone: {ms.name}
+                  </div>
+                  <div className="task-group">
+                    {ms.tasks.map((task) => (
+                      <div key={task.id} className="task-row flex justify-between items-center py-2 border-b border-subtle">
+                        <span className="task-name font-mono">{task.name}</span>
+                        <div className="task-meta flex items-center gap-2">
+                          {task.owner && <span className="owner-chip">{task.owner}</span>}
+                          <button
+                            type="button"
+                            className={`ms-pill ms-pill-${task.status} ${task.status} cursor-pointer`}
+                            onClick={() => handleStatusToggle(task.id, task.status)}
+                            title="Click to toggle status (OPEN -> DONE -> BLOCKED)"
+                          >
+                            {task.status.toUpperCase()}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-xs text-muted hover:text-danger ml-1"
+                            onClick={() => deleteTask(task.id)}
+                            title="Delete task"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ))}
+
+            {orphanedTasks.length > 0 && (
+              <div className="mb-4 flex flex-col gap-2">
                 <div style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                   color: 'var(--text-faint)',
                   paddingLeft: '4px',
                 }}>
-                  {ms.name}
+                  Direct AI Tasks
                 </div>
                 <div className="task-group">
-                  {ms.tasks.map((task) => (
+                  {orphanedTasks.map((task) => (
                     <div key={task.id} className="task-row flex justify-between items-center py-2 border-b border-subtle">
-                      <span className="task-name">{task.name}</span>
+                      <span className="task-name font-mono">{task.name}</span>
                       <div className="task-meta flex items-center gap-2">
                         {task.owner && <span className="owner-chip">{task.owner}</span>}
                         <button
@@ -81,8 +127,8 @@ export default function TasksPanel({ milestones, tasks }) {
                   ))}
                 </div>
               </div>
-            )
-          ))
+            )}
+          </>
         ) : (
           <div className="panel-empty p-4 text-center">
             <p className="text-muted text-sm mb-2 font-mono">No tasks yet.</p>

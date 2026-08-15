@@ -590,30 +590,52 @@ export function DataProvider({ children }) {
       parsed: parsedResult,
     }
 
+    let createdMs = null
     let createdTask = null
-    let updatedMilestonesList = []
-    let updatedTasksList = []
 
     setData((prev) => {
-      // Find or fallback target milestone
-      let targetMs = prev.milestones.find((m) => m.id === parsedResult.milestoneId)
+      // Find milestone by ID or name, or first project milestone
+      let targetMs = prev.milestones.find(
+        (m) =>
+          m.projectId === projectId &&
+          (m.id === parsedResult.milestoneId ||
+            (m.name && parsedResult.milestoneName && m.name.toLowerCase().includes(parsedResult.milestoneName.toLowerCase())))
+      )
+
       if (!targetMs) {
         targetMs = prev.milestones.find((m) => m.projectId === projectId)
       }
 
-      const targetMsId = targetMs ? targetMs.id : null
+      let newMilestones = [...prev.milestones]
 
-      // Check if we should auto-create a task
+      // If no milestone exists for project at all, auto-create one
+      if (!targetMs) {
+        createdMs = {
+          id: `ms-${Date.now()}`,
+          projectId,
+          name: parsedResult.milestoneName || 'General Delivery Phase',
+          status: parsedResult.inferredStatus || 'open',
+          dueDate: '',
+        }
+        targetMs = createdMs
+        newMilestones.push(createdMs)
+      }
+
+      const targetMsId = targetMs.id
+
+      // Auto-create task from taskName, summary, or rawText
+      const taskTitle = (parsedResult.taskName || parsedResult.summary || rawText).trim()
       let newTasks = [...prev.tasks]
-      if (parsedResult.taskName && targetMsId) {
+
+      if (taskTitle && targetMsId) {
         const existingTask = prev.tasks.find(
-          (t) => t.milestoneId === targetMsId && t.name.toLowerCase() === parsedResult.taskName.toLowerCase()
+          (t) => t.milestoneId === targetMsId && t.name.toLowerCase() === taskTitle.toLowerCase()
         )
         if (!existingTask) {
           createdTask = {
             id: `tsk-${Date.now()}`,
             milestoneId: targetMsId,
-            name: parsedResult.taskName,
+            name: taskTitle,
             status: parsedResult.inferredStatus || 'open',
             owner: 'AI Update',
           }
@@ -622,9 +644,8 @@ export function DataProvider({ children }) {
       }
 
       // Update milestone status if inferred
-      let updatedMilestones = prev.milestones
       if (targetMsId && parsedResult.inferredStatus) {
-        updatedMilestones = prev.milestones.map((m) =>
+        newMilestones = newMilestones.map((m) =>
           m.id === targetMsId ? { ...m, status: parsedResult.inferredStatus } : m
         )
       }
@@ -650,13 +671,10 @@ export function DataProvider({ children }) {
         }
       })
 
-      updatedMilestonesList = updatedMilestones
-      updatedTasksList = newTasks
-
       return {
         ...prev,
         projects: updatedProjects,
-        milestones: updatedMilestones,
+        milestones: newMilestones,
         tasks: newTasks,
         rawUpdates: [newUpdate, ...prev.rawUpdates],
       }
@@ -666,6 +684,10 @@ export function DataProvider({ children }) {
     if (isSupabaseConfigured && supabase) {
       await supabase.from('updates').insert([toDbUpdate(newUpdate)])
       await supabase.from('projects').update({ last_activity_at: nowIso }).eq('id', projectId)
+
+      if (createdMs) {
+        await supabase.from('milestones').insert([toDbMilestone(createdMs)])
+      }
 
       if (parsedResult.milestoneId && parsedResult.inferredStatus) {
         await supabase.from('milestones').update({ status: parsedResult.inferredStatus }).eq('id', parsedResult.milestoneId)
