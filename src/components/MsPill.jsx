@@ -3,10 +3,13 @@
  * status: "done" | "open" | "blocked"
  */
 export default function MsPill({ status }) {
-  const labels = { done: 'Done', open: 'Open', blocked: 'Blocked' }
+  const normalized = (status || '').toLowerCase()
+  const labels = { done: 'DONE', open: 'OPEN', blocked: 'BLOCKED' }
+  const labelText = labels[normalized] || (status ? status.toUpperCase() : '')
+
   return (
-    <span className={`ms-pill ${status}`}>
-      {labels[status] ?? status}
+    <span className={`ms-pill ms-pill-${normalized} ${normalized}`}>
+      {labelText}
     </span>
   )
 }

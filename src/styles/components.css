@@ -62,17 +62,35 @@
 /* ── Milestone Status Pills ─────────────────────────────────── */
 .ms-pill {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 0 !important;
-  border: 1.5px solid var(--border-dark);
+  border: 2px solid var(--border-dark);
 }
-.ms-pill-done    { color: #FFFFFF; background: var(--status-on-track-bg); }
-.ms-pill-open    { color: #181816; background: var(--status-at-risk-bg); }
-.ms-pill-blocked { color: #FFFFFF; background: var(--status-blocked-bg); }
+
+.ms-pill.done, .ms-pill-done {
+  color: #FFFFFF !important;
+  background: #005C2B !important; /* Bold vibrant terminal green box */
+  border-color: #003B1B !important;
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.ms-pill.open, .ms-pill-open {
+  color: #181816 !important;
+  background: #F5C710 !important;
+  border-color: #005C2B !important;
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.ms-pill.blocked, .ms-pill-blocked {
+  color: #FFFFFF !important;
+  background: #D84C1C !important;
+  border-color: #005C2B !important;
+  box-shadow: 2px 2px 0px #000000;
+}
 
 /* ── Nav Tabs (Yellow & Green Block Switcher) ───────────────── */
 .nav-tabs {
