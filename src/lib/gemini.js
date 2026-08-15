@@ -35,7 +35,7 @@ Analyse the raw text above and return a JSON object with exactly these fields:
   "milestoneId":   "<id of the most relevant milestone, or null>",
   "milestoneName": "<name of that milestone, or null>",
   "taskId":        "<id of the most relevant task within that milestone, or null>",
-  "taskName":      "<name of that task, or null>",
+  "taskName":      "<name or description of the task mentioned in update, or null>",
   "summary":       "<one professional sentence summarising the update — suitable for a customer-facing changelog; omit owner names and internal jargon>",
   "inferredStatus": "<new status implied for the matched milestone or task: one of open | blocked | done — or null if no status change is implied>",
   "confidence":    "<high | medium | low>"
@@ -52,7 +52,7 @@ function parseUpdateLocally(rawText, milestones = [], tasks = []) {
     inferredStatus = 'done'
   } else if (lower.includes('block') || lower.includes('stuck') || lower.includes('issue') || lower.includes('delay')) {
     inferredStatus = 'blocked'
-  } else if (lower.includes('progress') || lower.includes('start') || lower.includes('working')) {
+  } else if (lower.includes('progress') || lower.includes('start') || lower.includes('working') || lower.includes('add')) {
     inferredStatus = 'open'
   }
 
@@ -64,20 +64,26 @@ function parseUpdateLocally(rawText, milestones = [], tasks = []) {
     matchedMs = milestones[0]
   }
 
-  // Match task
+  // Match existing task
   let matchedTask = tasks.find((t) =>
     t.name && lower.includes(t.name.toLowerCase().split(' ')[0])
   )
 
+  // Extract task name if user mentions adding a task or feature
+  let extractedTaskName = matchedTask ? matchedTask.name : null
+  if (!extractedTaskName && (lower.includes('task') || lower.includes('add') || lower.includes('feature') || lower.includes('functionality'))) {
+    extractedTaskName = rawText.trim()
+  }
+
   const cleanSummary = rawText.length > 100 ? `${rawText.substring(0, 97)}...` : rawText
 
   return {
-    milestoneId: matchedMs ? matchedMs.id : null,
-    milestoneName: matchedMs ? matchedMs.name : null,
+    milestoneId: matchedMs ? matchedMs.id : (milestones[0]?.id || null),
+    milestoneName: matchedMs ? matchedMs.name : (milestones[0]?.name || null),
     taskId: matchedTask ? matchedTask.id : null,
-    taskName: matchedTask ? matchedTask.name : null,
+    taskName: extractedTaskName,
     summary: cleanSummary,
-    inferredStatus,
+    inferredStatus: inferredStatus || 'open',
     confidence: 'medium',
   }
 }
@@ -131,13 +137,15 @@ export async function parseUpdateWithGemini(rawText, milestones = [], tasks = []
       .trim()
 
     const parsed = JSON.parse(cleaned)
+    const matchedMs = milestones.find((m) => m.id === parsed.milestoneId) || milestones[0]
+
     return {
-      milestoneId: parsed.milestoneId || null,
-      milestoneName: parsed.milestoneName || null,
+      milestoneId: parsed.milestoneId || (matchedMs?.id || null),
+      milestoneName: parsed.milestoneName || (matchedMs?.name || null),
       taskId: parsed.taskId || null,
-      taskName: parsed.taskName || null,
+      taskName: parsed.taskName || (rawText.toLowerCase().includes('task') || rawText.toLowerCase().includes('add') ? rawText : null),
       summary: parsed.summary || rawText,
-      inferredStatus: ['open', 'blocked', 'done'].includes(parsed.inferredStatus) ? parsed.inferredStatus : null,
+      inferredStatus: ['open', 'blocked', 'done'].includes(parsed.inferredStatus) ? parsed.inferredStatus : 'open',
       confidence: parsed.confidence || 'medium',
     }
   } catch (err) {
