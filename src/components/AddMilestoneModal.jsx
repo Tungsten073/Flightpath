@@ -12,7 +12,7 @@ export default function AddMilestoneModal({ isOpen, onClose, onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) {
-      setError('Milestone Name is required.')
+      setError('⚠️ Milestone Name is required.')
       return
     }
 
@@ -21,7 +21,7 @@ export default function AddMilestoneModal({ isOpen, onClose, onSubmit }) {
       await onSubmit({
         name: name.trim(),
         status,
-        dueDate,
+        dueDate: dueDate || null,
       })
       onClose()
       setName('')
@@ -39,60 +39,62 @@ export default function AddMilestoneModal({ isOpen, onClose, onSubmit }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">+ Add Milestone</h3>
+        <div className="modal-header-banner">
+          <h3 className="modal-title">✚ ADD MILESTONE</h3>
           <button className="modal-close-btn" onClick={onClose} type="button">✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
-          {error && <div className="error-banner mb-3">{error}</div>}
+        <div className="modal-body">
+          <form onSubmit={handleSubmit} className="modal-form" noValidate>
+            {error && <div className="error-banner">{error}</div>}
 
-          <div className="form-group">
-            <label className="form-label">Milestone Name *</label>
-            <input
-              type="text"
-              className="neo-input"
-              placeholder="e.g. Flight Safety Sign-off"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label className="form-label">Status</label>
-              <select
-                className="neo-select"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="open">OPEN</option>
-                <option value="blocked">BLOCKED</option>
-                <option value="done">DONE</option>
-              </select>
-            </div>
-
-            <div className="form-group flex-1">
-              <label className="form-label">Due Date</label>
+            <div className="form-group">
+              <label className="form-label">Milestone Name *</label>
               <input
-                type="date"
+                type="text"
                 className="neo-input"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                placeholder="e.g. Flight Safety Sign-off"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
               />
             </div>
-          </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding...' : '+ Add Milestone'}
-            </button>
-          </div>
-        </form>
+            <div className="modal-grid-2">
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select
+                  className="neo-select"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="open">OPEN</option>
+                  <option value="blocked">BLOCKED</option>
+                  <option value="done">DONE</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Due Date</label>
+                <input
+                  type="date"
+                  className="neo-input"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-modal-cancel" onClick={onClose} disabled={isSubmitting}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-modal-submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Adding...' : '+ Add Milestone'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )
