@@ -59,7 +59,7 @@
   box-shadow: 2px 2px 0px #000000;
 }
 
-/* ── Milestone Status Pills ─────────────────────────────────── */
+/* ── Milestone Status Pills (Universal High-Visibility Green Box) ── */
 .ms-pill {
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -71,25 +71,101 @@
   border: 2px solid var(--border-dark);
 }
 
-.ms-pill.done, .ms-pill-done {
+.ms-pill.done, .ms-pill-done, [class*="ms-pill-done"], [class*="status-done"] {
   color: #FFFFFF !important;
   background: #005C2B !important; /* Bold vibrant terminal green box */
-  border-color: #003B1B !important;
-  box-shadow: 2px 2px 0px #000000;
+  border: 2px solid #003B1B !important;
+  box-shadow: 2px 2px 0px #000000 !important;
+  font-weight: 800 !important;
+  font-family: var(--font-mono) !important;
+  text-transform: uppercase !important;
+  padding: 4px 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
-.ms-pill.open, .ms-pill-open {
+.ms-pill.open, .ms-pill-open, [class*="ms-pill-open"], [class*="status-open"] {
   color: #181816 !important;
   background: #F5C710 !important;
-  border-color: #005C2B !important;
-  box-shadow: 2px 2px 0px #000000;
+  border: 2px solid #005C2B !important;
+  box-shadow: 2px 2px 0px #000000 !important;
+  font-weight: 800 !important;
+  font-family: var(--font-mono) !important;
+  text-transform: uppercase !important;
+  padding: 4px 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
-.ms-pill.blocked, .ms-pill-blocked {
+.ms-pill.blocked, .ms-pill-blocked, [class*="ms-pill-blocked"], [class*="status-blocked"] {
   color: #FFFFFF !important;
   background: #D84C1C !important;
-  border-color: #005C2B !important;
-  box-shadow: 2px 2px 0px #000000;
+  border: 2px solid #005C2B !important;
+  box-shadow: 2px 2px 0px #000000 !important;
+  font-weight: 800 !important;
+  font-family: var(--font-mono) !important;
+  text-transform: uppercase !important;
+  padding: 4px 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* ── Milestone & Task Tree (Customer View Tree Layout) ───────── */
+.ms-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ms-tree-milestone {
+  background: var(--bg-base);
+  border: 2px solid var(--border-dark);
+  border-radius: 0 !important;
+  padding: var(--space-4);
+}
+
+.ms-tree-milestone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ms-tree-milestone-name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.ms-tree-milestone-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ms-tree-tasks {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1.5px dashed var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ms-tree-task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 4px 0;
+}
+
+.ms-tree-task-name {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
 }
 
 /* ── Nav Tabs (Yellow & Green Block Switcher) ───────────────── */
